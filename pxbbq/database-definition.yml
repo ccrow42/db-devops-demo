@@ -1,0 +1,105 @@
+databaseChangeLog:
+- changeSet:
+    id: 1762208521617-1
+    author: stephenatwell (generated)
+    changes:
+    - createTable:
+        columns:
+        - column:
+            constraints:
+              nullable: false
+            name: doc
+            type: JSONB
+        - column:
+            constraints:
+              nullable: false
+              primaryKey: true
+              primaryKeyName: order_sequence_pkey
+            defaultValueComputed: GENERATED ALWAYS AS (doc ->> '_id'::text) STORED
+            name: id
+            type: TEXT
+        tableName: order_sequence
+- changeSet:
+    id: 1762208521617-2
+    author: stephenatwell (generated)
+    changes:
+    - createTable:
+        columns:
+        - column:
+            autoIncrement: true
+            constraints:
+              nullable: false
+              primaryKey: true
+              primaryKeyName: orders_pkey
+            name: id
+            type: INTEGER
+        - column:
+            constraints:
+              nullable: false
+            name: doc
+            type: JSONB
+        tableName: orders
+- changeSet:
+    id: 1762208521617-3
+    author: stephenatwell (generated)
+    changes:
+    - createTable:
+        columns:
+        - column:
+            autoIncrement: true
+            constraints:
+              nullable: false
+              primaryKey: true
+              primaryKeyName: menu_pkey
+            name: id
+            startWith: 23
+            type: INTEGER
+        - column:
+            constraints:
+              nullable: false
+            name: doc
+            type: JSONB
+        tableName: menu
+- changeSet:
+    id: 1762208521617-4
+    author: stephenatwell (generated)
+    changes:
+    - createTable:
+        columns:
+        - column:
+            autoIncrement: true
+            constraints:
+              nullable: false
+              primaryKey: true
+              primaryKeyName: registrations_pkey
+            name: id
+            startWith: 12
+            type: INTEGER
+        - column:
+            constraints:
+              nullable: false
+            name: doc
+            type: JSONB
+        tableName: registrations
+- changeSet:
+    id: 1762208521617-5
+    author: stephenatwell (generated)
+    changes:
+    - createTable:
+        columns:
+        - column:
+            autoIncrement: true
+            constraints:
+              nullable: false
+              primaryKey: true
+              primaryKeyName: product_pkey
+            name: id
+            startWith: 3
+            type: INTEGER
+        - column:
+            constraints:
+              nullable: false
+            name: doc
+            type: JSONB
+        tableName: product
+
