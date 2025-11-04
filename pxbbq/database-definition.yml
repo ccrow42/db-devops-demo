@@ -1,122 +1,255 @@
 databaseChangeLog:
-- changeSet:
-    id: 1762208521617-1
-    author: stephenatwell (generated)
-    changes:
-    - createTable:
-        columns:
-        - column:
-            constraints:
-              nullable: false
-            name: doc
-            type: JSONB
-        - column:
-            constraints:
-              nullable: false
-              primaryKey: true
-              primaryKeyName: order_sequence_pkey
-            defaultValueComputed: GENERATED ALWAYS AS (doc ->> '_id'::text) STORED
-            name: id
-            type: TEXT
-        tableName: order_sequence
-- changeSet:
-    id: 1762208521617-2
-    author: stephenatwell (generated)
-    changes:
-    - createTable:
-        columns:
-        - column:
-            autoIncrement: true
-            constraints:
-              nullable: false
-              primaryKey: true
-              primaryKeyName: orders_pkey
-            name: id
-            type: INTEGER
-        - column:
-            constraints:
-              nullable: false
-            name: doc
-            type: JSONB
-        tableName: orders
-- changeSet:
-    id: 1762208521617-3
-    author: stephenatwell (generated)
-    changes:
-    - createTable:
-        columns:
-        - column:
-            autoIncrement: true
-            constraints:
-              nullable: false
-              primaryKey: true
-              primaryKeyName: menu_pkey
-            name: id
-            startWith: 23
-            type: INTEGER
-        - column:
-            constraints:
-              nullable: false
-            name: doc
-            type: JSONB
-        tableName: menu
-- changeSet:
-    id: 1762208521617-4
-    author: stephenatwell (generated)
-    changes:
-    - createTable:
-        columns:
-        - column:
-            autoIncrement: true
-            constraints:
-              nullable: false
-              primaryKey: true
-              primaryKeyName: registrations_pkey
-            name: id
-            startWith: 12
-            type: INTEGER
-        - column:
-            constraints:
-              nullable: false
-            name: doc
-            type: JSONB
-        tableName: registrations
-- changeSet:
-    id: 1762208521617-5
-    author: stephenatwell (generated)
-    changes:
-    - createTable:
-        columns:
-        - column:
-            autoIncrement: true
-            constraints:
-              nullable: false
-              primaryKey: true
-              primaryKeyName: product_pkey
-            name: id
-            startWith: 3
-            type: INTEGER
-        - column:
-            constraints:
-              nullable: false
-            name: doc
-            type: JSONB
-        tableName: product
-- changeSet:
-    id: initialMenu
-    author: stephenatwell
-    changes:
-    - loadUpdateData:
-        file: reference-data/menu_v1.csv
-        relativeToChangelogFile: true
-        tableName: menu
-        primaryKey: id
-- changeSet:
-    id: initialProducts
-    author: stephenatwell
-    changes:
-    - loadUpdateData:
-        file: reference-data/product_v1.csv
-        relativeToChangelogFile: true
-        tableName: product
-        primaryKey: id
+  - changeSet:
+      id: 1762208521617-1
+      author: stephenatwell (generated)
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                  name: doc
+                  type: JSONB
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: order_sequence_pkey
+                  defaultValueComputed: GENERATED ALWAYS AS (doc ->> '_id'::text) STORED
+                  name: id
+                  type: TEXT
+            tableName: order_sequence
+  - changeSet:
+      id: 1762208521617-2
+      author: stephenatwell (generated)
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: orders_pkey
+                  name: id
+                  type: INTEGER
+              - column:
+                  constraints:
+                    nullable: false
+                  name: doc
+                  type: JSONB
+            tableName: orders
+  - changeSet:
+      id: 1762208521617-3
+      author: stephenatwell (generated)
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: menu_pkey
+                  name: id
+                  startWith: 23
+                  type: INTEGER
+              - column:
+                  constraints:
+                    nullable: false
+                  name: doc
+                  type: JSONB
+            tableName: menu
+  - changeSet:
+      id: 1762208521617-4
+      author: stephenatwell (generated)
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: registrations_pkey
+                  name: id
+                  startWith: 12
+                  type: INTEGER
+              - column:
+                  constraints:
+                    nullable: false
+                  name: doc
+                  type: JSONB
+            tableName: registrations
+  - changeSet:
+      id: 1762208521617-5
+      author: stephenatwell (generated)
+      changes:
+        - createTable:
+            columns:
+              - column:
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: product_pkey
+                  name: id
+                  startWith: 3
+                  type: INTEGER
+              - column:
+                  constraints:
+                    nullable: false
+                  name: doc
+                  type: JSONB
+            tableName: product
+  - changeSet:
+      id: initialMenu
+      author: stephenatwell
+      changes:
+        - loadUpdateData:
+            file: reference-data/menu_v1.csv
+            relativeToChangelogFile: true
+            tableName: menu
+            primaryKey: id
+  - changeSet:
+      id: initialProducts
+      author: stephenatwell
+      changes:
+        - loadUpdateData:
+            file: reference-data/product_v1.csv
+            relativeToChangelogFile: true
+            tableName: product
+            primaryKey: id
+  - changeSet:
+      id: 1699123028-1
+      author: stephen.atwell@harness.io
+      comment: Add individual columns for JSON fields in product table
+      labels: schema-change
+      changes:
+        - addColumn:
+            tableName: product
+            columns:
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: product
+            columnName: name
+  - changeSet:
+      id: 1699123028-2
+      author: stephen.atwell@harness.io
+      comment: Add type column from JSON
+      labels: schema-change
+      changes:
+        - addColumn:
+            tableName: product
+            columns:
+              - column:
+                  name: type
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: product
+            columnName: type
+  - changeSet:
+      id: 1699123028-3
+      author: stephen.atwell@harness.io
+      comment: Add price column from JSON
+      labels: schema-change
+      changes:
+        - addColumn:
+            tableName: product
+            columns:
+              - column:
+                  name: price
+                  type: DECIMAL(10,2)
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: product
+            columnName: price
+  - changeSet:
+      id: 1699123028-4
+      author: stephen.atwell@harness.io
+      comment: Add vegetarian column from JSON
+      labels: schema-change
+      changes:
+        - addColumn:
+            tableName: product
+            columns:
+              - column:
+                  name: vegetarian
+                  type: BOOLEAN
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: product
+            columnName: vegetarian
+  - changeSet:
+      id: 1699123028-5
+      author: stephen.atwell@harness.io
+      comment: Populate new columns from JSON data
+      labels: data-migration
+      changes:
+        - sql:
+            sql: "UPDATE product \nSET name = (doc->>'name'),\n    type = (doc->>'type'),\n    price = (doc->>'price')::DECIMAL(10,2),\n    vegetarian = (doc->>'vegetarian')::BOOLEAN;\n"
+      rollback:
+        - sql:
+            sql: |
+              -- No rollback needed as original JSON data is preserved
+  - changeSet:
+      id: 1699123028-6
+      author: stephen.atwell@harness.io
+      comment: Create trigger to keep JSON and columns in sync
+      labels: schema-change
+      changes:
+        - sql:
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_product_columns_to_json()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.doc = jsonb_build_object(
+                  'name', NEW.name,
+                  'type', NEW.type,
+                  'price', NEW.price,
+                  'vegetarian', NEW.vegetarian
+                );
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              CREATE TRIGGER product_columns_to_json_trigger
+              BEFORE UPDATE OR INSERT ON product
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_product_columns_to_json();
+
+              CREATE OR REPLACE FUNCTION sync_product_json_to_columns()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.name = NEW.doc->>'name';
+                NEW.type = NEW.doc->>'type';
+                NEW.price = (NEW.doc->>'price')::DECIMAL(10,2);
+                NEW.vegetarian = (NEW.doc->>'vegetarian')::BOOLEAN;
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              CREATE TRIGGER product_json_to_columns_trigger
+              BEFORE UPDATE ON product
+              FOR EACH ROW
+              WHEN (OLD.doc IS DISTINCT FROM NEW.doc)
+              EXECUTE FUNCTION sync_product_json_to_columns();
+      rollback:
+        - sql:
+            sql: |
+              DROP TRIGGER IF EXISTS product_columns_to_json_trigger ON product;
+              DROP FUNCTION IF EXISTS sync_product_columns_to_json();
+              DROP TRIGGER IF EXISTS product_json_to_columns_trigger ON product;
+              DROP FUNCTION IF EXISTS sync_product_json_to_columns();
