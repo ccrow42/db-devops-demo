@@ -91,7 +91,23 @@ spec:
   ports:
   - port: 80
     targetPort: 8080
-    nodePort: 30000
   type: LoadBalancer
   selector:
     app: pxbbq-web
+    harness.io/color: blue
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pxbbq-svc-offline
+  namespace: pxbbq
+  labels:
+    app: pxbbq-web
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: LoadBalancer
+  selector:
+    app: pxbbq-web
+    harness.io/color: green
