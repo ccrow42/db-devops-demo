@@ -163,7 +163,6 @@ databaseChangeLog:
         - dropColumn:
             tableName: product
             columnName: vegetarian
-
   - changeSet:
       id: 1762284664811-2
       author: Stephen Atwell
