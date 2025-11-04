@@ -102,4 +102,22 @@ databaseChangeLog:
             name: doc
             type: JSONB
         tableName: product
+- changeSet:
+    id: initialMenu
+    author: stephenatwell
+    changes:
+    - loadUpdateData:
+        file: reference-data/menu_v1.csv
+        relativeToChangelogFile: true
+        tableName: menu
+        primaryKey: id
+- changeSet:
+    id: initialProducts
+    author: stephenatwell
+    changes:
+    - loadUpdateData:
+        file: reference-data/product_v1.csv
+        relativeToChangelogFile: true
+        tableName: product
+        primaryKey: id
 
