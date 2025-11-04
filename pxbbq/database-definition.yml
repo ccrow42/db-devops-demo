@@ -121,7 +121,7 @@ databaseChangeLog:
         tableName: product
         primaryKey: id
         databaseChangeLog:
-  - changeSet:
+- changeSet:
       id: 1762284664811-1
       author: Stephen Atwell
       comment: Add new columns to product table for JSON normalization
@@ -163,7 +163,7 @@ databaseChangeLog:
         - dropColumn:
             tableName: product
             columnName: vegetarian
-  - changeSet:
+- changeSet:
       id: 1762284664811-2
       author: Stephen Atwell
       comment: Populate new columns with data from JSON doc column
@@ -185,7 +185,7 @@ databaseChangeLog:
                   type = NULL,
                   price = NULL,
                   vegetarian = NULL;
-  - changeSet:
+- changeSet:
       id: 1762284664811-3
       author: Stephen Atwell
       comment: Create trigger to keep JSON doc and individual columns in sync
