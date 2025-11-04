@@ -242,3 +242,120 @@ databaseChangeLog:
             sql: |
               DROP TRIGGER IF EXISTS product_columns_to_doc ON product;
               DROP FUNCTION IF EXISTS update_product_json();
+  - changeSet:
+      id: 1
+      author: Stephen Atwell
+      comment: Add separate columns for JSON fields in product table
+      labels: schema-change
+      changes:
+        - addColumn:
+            tableName: product
+            columns:
+              - column:
+                  name: name
+                  type: text
+              - column:
+                  name: type
+                  type: text
+              - column:
+                  name: price
+                  type: numeric
+              - column:
+                  name: vegetarian
+                  type: boolean
+      rollback:
+        - dropColumn:
+            tableName: product
+            columnName: name
+        - dropColumn:
+            tableName: product
+            columnName: type
+        - dropColumn:
+            tableName: product
+            columnName: price
+        - dropColumn:
+            tableName: product
+            columnName: vegetarian
+  - changeSet:
+      id: 2
+      author: Stephen Atwell
+      comment: Populate new columns with data from JSON doc column
+      labels: data-migration
+      changes:
+        - sql:
+            sql: |
+              UPDATE product
+              SET name = (doc->>'name'),
+                  type = (doc->>'type'),
+                  price = (doc->>'price')::numeric,
+                  vegetarian = (doc->>'vegetarian')::boolean;
+      rollback:
+        - sql:
+            sql: |
+              UPDATE product
+              SET name = NULL,
+                  type = NULL,
+                  price = NULL,
+                  vegetarian = NULL;
+  - changeSet:
+      id: 3
+      author: Stephen Atwell
+      comment: Create trigger to sync from doc to columns
+      labels: trigger
+      changes:
+        - sql:
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_doc_to_columns()
+              RETURNS TRIGGER AS
+              $BODY$
+              BEGIN
+                NEW.name = NEW.doc->>'name';
+                NEW.type = NEW.doc->>'type';
+                NEW.price = (NEW.doc->>'price')::numeric;
+                NEW.vegetarian = (NEW.doc->>'vegetarian')::boolean;
+                RETURN NEW;
+              END;
+              $BODY$
+              LANGUAGE plpgsql;
+
+              CREATE TRIGGER trigger_sync_doc_to_columns
+              BEFORE UPDATE OF doc OR INSERT ON product
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_doc_to_columns();
+      rollback:
+        - sql:
+            sql: |
+              DROP TRIGGER IF EXISTS trigger_sync_doc_to_columns ON product;
+              DROP FUNCTION IF EXISTS sync_doc_to_columns();
+  - changeSet:
+      id: 4
+      author: Stephen Atwell
+      comment: Create trigger to sync from columns to doc
+      labels: trigger
+      changes:
+        - sql:
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_columns_to_doc()
+              RETURNS TRIGGER AS
+              $BODY$
+              BEGIN
+                NEW.doc = jsonb_build_object(
+                  'name', NEW.name,
+                  'type', NEW.type,
+                  'price', NEW.price,
+                  'vegetarian', NEW.vegetarian
+                )::json;
+                RETURN NEW;
+              END;
+              $BODY$
+              LANGUAGE plpgsql;
+
+              CREATE TRIGGER trigger_sync_columns_to_doc
+              BEFORE UPDATE OF name, type, price, vegetarian ON product
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_columns_to_doc();
+      rollback:
+        - sql:
+            sql: |
+              DROP TRIGGER IF EXISTS trigger_sync_columns_to_doc ON product;
+              DROP FUNCTION IF EXISTS sync_columns_to_doc();
