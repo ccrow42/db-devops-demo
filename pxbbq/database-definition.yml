@@ -120,4 +120,137 @@ databaseChangeLog:
         relativeToChangelogFile: true
         tableName: product
         primaryKey: id
+        databaseChangeLog:
+  - changeSet:
+      id: 1762284664811-1
+      author: Stephen Atwell
+      comment: Add new columns to product table for JSON normalization
+      labels: "schema-change"
+      changes:
+        - addColumn:
+            tableName: product
+            columns:
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: type
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: price
+                  type: NUMERIC(10,2)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: vegetarian
+                  type: BOOLEAN
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: product
+            columnName: name
+        - dropColumn:
+            tableName: product
+            columnName: type
+        - dropColumn:
+            tableName: product
+            columnName: price
+        - dropColumn:
+            tableName: product
+            columnName: vegetarian
+
+  - changeSet:
+      id: 1762284664811-2
+      author: Stephen Atwell
+      comment: Populate new columns with data from JSON doc column
+      labels: "data-migration"
+      changes:
+        - sql:
+            sql: |
+              UPDATE product
+              SET name = (doc->>'name'),
+                  type = (doc->>'type'),
+                  price = (doc->>'price')::NUMERIC,
+                  vegetarian = (doc->>'vegetarian')::BOOLEAN
+              WHERE doc IS NOT NULL;
+      rollback:
+        - sql:
+            sql: |
+              UPDATE product
+              SET name = NULL,
+                  type = NULL,
+                  price = NULL,
+                  vegetarian = NULL;
+  - changeSet:
+      id: 1762284664811-3
+      author: Stephen Atwell
+      comment: Create trigger to keep JSON doc and individual columns in sync
+      labels: "schema-change"
+      changes:
+        - sql:
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_product_columns()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                IF TG_OP = 'UPDATE' THEN
+                  -- When doc is updated, update individual columns
+                  IF NEW.doc IS DISTINCT FROM OLD.doc THEN
+                    NEW.name = NEW.doc->>'name';
+                    NEW.type = NEW.doc->>'type';
+                    NEW.price = (NEW.doc->>'price')::NUMERIC;
+                    NEW.vegetarian = (NEW.doc->>'vegetarian')::BOOLEAN;
+                  -- When individual columns are updated, update doc
+                  ELSIF (NEW.name IS DISTINCT FROM OLD.name) OR
+                        (NEW.type IS DISTINCT FROM OLD.type) OR
+                        (NEW.price IS DISTINCT FROM OLD.price) OR
+                        (NEW.vegetarian IS DISTINCT FROM OLD.vegetarian) THEN
+                    NEW.doc = jsonb_build_object(
+                      'name', NEW.name,
+                      'type', NEW.type,
+                      'price', NEW.price,
+                      'vegetarian', NEW.vegetarian
+                    );
+                  END IF;
+                ELSIF TG_OP = 'INSERT' THEN
+                  -- For new rows, ensure both representations are in sync
+                  IF NEW.doc IS NOT NULL AND (
+                     NEW.name IS NULL OR
+                     NEW.type IS NULL OR
+                     NEW.price IS NULL OR
+                     NEW.vegetarian IS NULL) THEN
+                    NEW.name = NEW.doc->>'name';
+                    NEW.type = NEW.doc->>'type';
+                    NEW.price = (NEW.doc->>'price')::NUMERIC;
+                    NEW.vegetarian = (NEW.doc->>'vegetarian')::BOOLEAN;
+                  ELSIF NEW.doc IS NULL AND (
+                        NEW.name IS NOT NULL OR
+                        NEW.type IS NOT NULL OR
+                        NEW.price IS NOT NULL OR
+                        NEW.vegetarian IS NOT NULL) THEN
+                    NEW.doc = jsonb_build_object(
+                      'name', NEW.name,
+                      'type', NEW.type,
+                      'price', NEW.price,
+                      'vegetarian', NEW.vegetarian
+                    );
+                  END IF;
+                END IF;
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+              
+              CREATE TRIGGER sync_product_columns_trigger
+              BEFORE INSERT OR UPDATE ON product
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_product_columns();
+      rollback:
+        - sql:
+            sql: |
+              DROP TRIGGER IF EXISTS sync_product_columns_trigger ON product;
+              DROP FUNCTION IF EXISTS sync_product_columns();
 
