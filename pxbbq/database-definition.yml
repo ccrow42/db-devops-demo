@@ -120,3 +120,148 @@ databaseChangeLog:
             relativeToChangelogFile: true
             tableName: product
             primaryKey: id
+  - changeSet:
+      id: 1
+      author: stephen.atwell@harness.io
+      comment: Add individual columns for JSON fields from doc column
+      labels: schema-change
+      changes:
+        - addColumn:
+            tableName: product
+            columns:
+              - column:
+                  name: name
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: product
+            columnName: name
+  - changeSet:
+      id: 2
+      author: stephen.atwell@harness.io
+      comment: Add type column from doc JSON
+      labels: schema-change
+      changes:
+        - addColumn:
+            tableName: product
+            columns:
+              - column:
+                  name: type
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: product
+            columnName: type
+  - changeSet:
+      id: 3
+      author: stephen.atwell@harness.io
+      comment: Add price column from doc JSON
+      labels: schema-change
+      changes:
+        - addColumn:
+            tableName: product
+            columns:
+              - column:
+                  name: price
+                  type: NUMERIC
+      rollback:
+        - dropColumn:
+            tableName: product
+            columnName: price
+  - changeSet:
+      id: 4
+      author: stephen.atwell@harness.io
+      comment: Add vegetarian column from doc JSON
+      labels: schema-change
+      changes:
+        - addColumn:
+            tableName: product
+            columns:
+              - column:
+                  name: vegetarian
+                  type: BOOLEAN
+      rollback:
+        - dropColumn:
+            tableName: product
+            columnName: vegetarian
+  - changeSet:
+      id: 5
+      author: stephen.atwell@harness.io
+      comment: Populate new columns with data from doc JSON
+      labels: data-migration
+      changes:
+        - sql:
+            sql: |
+              UPDATE product
+              SET name = (doc->>'name'),
+                  type = (doc->>'type'),
+                  price = (doc->>'price')::NUMERIC,
+                  vegetarian = (doc->>'vegetarian')::BOOLEAN;
+      rollback:
+        - sql:
+            sql: |
+              UPDATE product
+              SET name = NULL,
+                  type = NULL,
+                  price = NULL,
+                  vegetarian = NULL;
+  - changeSet:
+      id: 6
+      author: stephen.atwell@harness.io
+      comment: Create trigger to sync from columns to doc JSON
+      labels: trigger
+      changes:
+        - sql:
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_columns_to_doc()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.doc = jsonb_build_object(
+                  'name', NEW.name,
+                  'type', NEW.type,
+                  'price', NEW.price,
+                  'vegetarian', NEW.vegetarian
+                )::TEXT;
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              CREATE TRIGGER sync_columns_to_doc_trigger
+              BEFORE UPDATE OF name, type, price, vegetarian
+              ON product
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_columns_to_doc();
+      rollback:
+        - sql:
+            sql: |
+              DROP TRIGGER IF EXISTS sync_columns_to_doc_trigger ON product;
+              DROP FUNCTION IF EXISTS sync_columns_to_doc();
+  - changeSet:
+      id: 7
+      author: stephen.atwell@harness.io
+      comment: Create trigger to sync from doc JSON to columns
+      labels: trigger
+      changes:
+        - sql:
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_doc_to_columns()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.name = (NEW.doc->>'name');
+                NEW.type = (NEW.doc->>'type');
+                NEW.price = (NEW.doc->>'price')::NUMERIC;
+                NEW.vegetarian = (NEW.doc->>'vegetarian')::BOOLEAN;
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              CREATE TRIGGER sync_doc_to_columns_trigger
+              BEFORE UPDATE OF doc
+              ON product
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_doc_to_columns();
+      rollback:
+        - sql:
+            sql: |
+              DROP TRIGGER IF EXISTS sync_doc_to_columns_trigger ON product;
+              DROP FUNCTION IF EXISTS sync_doc_to_columns();
