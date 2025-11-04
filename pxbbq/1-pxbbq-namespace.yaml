@@ -6,3 +6,10 @@ metadata:
   name: pxbbq
   labels:
     platform.portworx.com/pds: "true"
+---
+apiVersion: v1
+kind: Namespace                 
+metadata:
+  name: development
+  labels:
+    platform.portworx.com/pds: "true"
