@@ -125,3 +125,122 @@ databaseChangeLog:
       rollback:
         - delete:
             tableName: product
+  - changeSet:
+      id: 20251104141519_add_product_json_columns
+      author: stephen.atwell@harness.io
+      comment: Add separate columns for each JSON field in the doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: product
+            columns:
+              - column:
+                  name: name
+                  type: text
+              - column:
+                  name: type
+                  type: text
+              - column:
+                  name: price
+                  type: numeric
+              - column:
+                  name: vegetarian
+                  type: boolean
+      rollback:
+        - dropColumn:
+            tableName: product
+            columnName: name
+        - dropColumn:
+            tableName: product
+            columnName: type
+        - dropColumn:
+            tableName: product
+            columnName: price
+        - dropColumn:
+            tableName: product
+            columnName: vegetarian
+  - changeSet:
+      id: 20251104141519_populate_product_columns_from_json
+      author: stephen.atwell@harness.io
+      comment: Populate new columns with data from existing JSON doc column
+      labels: myticket-123
+      changes:
+        - sql:
+            sql: |
+              UPDATE product
+              SET name = (doc->>'name'),
+                  type = (doc->>'type'),
+                  price = (doc->>'price')::numeric,
+                  vegetarian = (doc->>'vegetarian')::boolean;
+      rollback:
+        - sql:
+            sql: |
+              UPDATE product
+              SET name = NULL,
+                  type = NULL,
+                  price = NULL,
+                  vegetarian = NULL;
+  - changeSet:
+      id: 20251104141519_create_doc_to_columns_trigger
+      author: stephen.atwell@harness.io
+      comment: Create trigger to sync JSON doc column to individual columns
+      labels: myticket-123
+      changes:
+        - sql:
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_doc_to_columns()
+              RETURNS TRIGGER AS
+              BEGIN
+                NEW.name = NEW.doc->>'name';
+                NEW.type = NEW.doc->>'type';
+                NEW.price = (NEW.doc->>'price')::numeric;
+                NEW.vegetarian = (NEW.doc->>'vegetarian')::boolean;
+                RETURN NEW;
+              END;
+
+              CREATE TRIGGER product_doc_to_columns
+              BEFORE UPDATE OR INSERT ON product
+              FOR EACH ROW
+              WHEN (NEW.doc IS DISTINCT FROM OLD.doc OR OLD.doc IS NULL)
+              EXECUTE FUNCTION sync_doc_to_columns();
+      rollback:
+        - sql:
+            sql: |
+              DROP TRIGGER IF EXISTS product_doc_to_columns ON product;
+              DROP FUNCTION IF EXISTS sync_doc_to_columns();
+  - changeSet:
+      id: 20251104141519_create_columns_to_doc_trigger
+      author: stephen.atwell@harness.io
+      comment: Create trigger to sync individual columns to JSON doc column
+      labels: myticket-123
+      changes:
+        - sql:
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_columns_to_doc()
+              RETURNS TRIGGER AS
+              BEGIN
+                NEW.doc = jsonb_build_object(
+                  'name', NEW.name,
+                  'type', NEW.type,
+                  'price', NEW.price,
+                  'vegetarian', NEW.vegetarian
+                );
+                RETURN NEW;
+              END;
+
+              CREATE TRIGGER product_columns_to_doc
+              BEFORE UPDATE OR INSERT ON product
+              FOR EACH ROW
+              WHEN (
+                NEW.name IS DISTINCT FROM OLD.name OR
+                NEW.type IS DISTINCT FROM OLD.type OR
+                NEW.price IS DISTINCT FROM OLD.price OR
+                NEW.vegetarian IS DISTINCT FROM OLD.vegetarian OR
+                OLD.name IS NULL
+              )
+              EXECUTE FUNCTION sync_columns_to_doc();
+      rollback:
+        - sql:
+            sql: |
+              DROP TRIGGER IF EXISTS product_columns_to_doc ON product;
+              DROP FUNCTION IF EXISTS sync_columns_to_doc();
