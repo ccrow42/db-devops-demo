@@ -115,8 +115,13 @@ databaseChangeLog:
       id: initialProducts
       author: stephenatwell
       changes:
+        - delete:
+            tableName: product
         - loadUpdateData:
             file: reference-data/product_v1.csv
             relativeToChangelogFile: true
             tableName: product
             primaryKey: id
+      rollback:
+        - delete:
+            tableName: product
