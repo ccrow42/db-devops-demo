@@ -265,3 +265,22 @@ databaseChangeLog:
             sql: |
               DROP TRIGGER IF EXISTS sync_doc_to_columns_trigger ON product;
               DROP FUNCTION IF EXISTS sync_doc_to_columns();
+  - changeSet:
+      id: 1762284664811-1
+      author: Stephen Atwell
+      validCheckSum: ANY
+      comment: Add new columns to product table for JSON normalization
+      labels: schema-change
+      objectQuotingStrategy: LEGACY
+      rollback: []
+      changes: []
+  - changeSet:
+      id: 1762284664811-2
+      author: Stephen Atwell
+      validCheckSum: ANY
+      comment: Populate new columns with data from JSON doc column
+      labels: schema-change
+      objectQuotingStrategy: LEGACY
+      rollback: []
+      changes: []
+          
