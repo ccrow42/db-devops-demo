@@ -15,7 +15,7 @@ spec:
     spec:                        
       containers:
       - name: pxbbq-web
-        image: quay.io/px-tme/pxbbq:v4.8.3 #New version is quay.io/px-tme/pxbbq:da3b26f
+        image: quay.io/px-tme/pxbbq:v4.8.3 #New version is quay.io/px-tme/pxbbq:da3b26f old version is quay.io/px-tme/pxbbq:v4.8.3
         env:
         - name: DB_TYPE
           value: "postgres" #Leave empty to use MongoDB, set to "postgres" to use Postgres and POSTGRES_CONN
