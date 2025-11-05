@@ -1,0 +1,8 @@
+# Create PXBBQ Namespace
+---
+apiVersion: v1
+kind: Namespace                 
+metadata:
+  name: pxbbq-prod
+  labels:
+    platform.portworx.com/pds: "true"
