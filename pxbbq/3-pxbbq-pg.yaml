@@ -96,7 +96,6 @@ spec:
   type: LoadBalancer
   selector:
     app: pxbbq-web
-    harness.io/color: blue
 ---
 apiVersion: v1
 kind: Service
@@ -112,3 +111,5 @@ spec:
   - port: 80
     targetPort: 8080
   type: LoadBalancer
+  selector:
+    app: pxbbq-web
