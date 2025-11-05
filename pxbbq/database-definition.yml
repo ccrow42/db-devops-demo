@@ -235,3 +235,169 @@ databaseChangeLog:
               DROP FUNCTION IF EXISTS sync_menu_columns_to_doc();
               DROP TRIGGER IF EXISTS sync_menu_doc_to_columns_trigger ON menu;
               DROP FUNCTION IF EXISTS sync_menu_doc_to_columns();
+  - changeSet:
+      id: 202511051209-add-columns-from-doc-json
+      author: Stephen Atwell
+      comment: Add separate columns for each field in the doc JSON column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: main
+                  type: text
+              - column:
+                  name: drink
+                  type: text
+              - column:
+                  name: email
+                  type: text
+              - column:
+                  name: side1
+                  type: text
+              - column:
+                  name: side2
+                  type: text
+              - column:
+                  name: order_id
+                  type: integer
+              - column:
+                  name: order_date
+                  type: timestamp
+              - column:
+                  name: order_status
+                  type: text
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: main
+        - dropColumn:
+            tableName: orders
+            columnName: drink
+        - dropColumn:
+            tableName: orders
+            columnName: email
+        - dropColumn:
+            tableName: orders
+            columnName: side1
+        - dropColumn:
+            tableName: orders
+            columnName: side2
+        - dropColumn:
+            tableName: orders
+            columnName: order_id
+        - dropColumn:
+            tableName: orders
+            columnName: order_date
+        - dropColumn:
+            tableName: orders
+            columnName: order_status
+  - changeSet:
+      id: 202511051209-populate-columns-from-doc-json
+      author: Stephen Atwell
+      comment: Populate new columns with data from the doc JSON column
+      labels: myticket-123
+      changes:
+        - sql:
+            sql: |
+              UPDATE orders
+              SET main = (doc->>'Main'),
+                  drink = (doc->>'Drink'),
+                  email = (doc->>'Email'),
+                  side1 = (doc->>'Side1'),
+                  side2 = (doc->>'Side2'),
+                  order_id = (doc->>'OrderId')::integer,
+                  order_date = (doc->>'OrderDate')::timestamp,
+                  order_status = (doc->>'OrderStatus');
+      rollback:
+        - sql:
+            sql: |
+              UPDATE orders
+              SET main = NULL,
+                  drink = NULL,
+                  email = NULL,
+                  side1 = NULL,
+                  side2 = NULL,
+                  order_id = NULL,
+                  order_date = NULL,
+                  order_status = NULL;
+  - changeSet:
+      id: 202511051209-create-trigger-for-doc-to-columns-sync
+      author: Stephen Atwell
+      comment: Create trigger to update columns when doc JSON is updated
+      labels: myticket-123
+      changes:
+        - sql:
+            sql: |
+              CREATE OR REPLACE FUNCTION update_columns_from_doc()
+              RETURNS TRIGGER AS
+              '
+              BEGIN
+                NEW.main = NEW.doc->>''Main'';
+                NEW.drink = NEW.doc->>''Drink'';
+                NEW.email = NEW.doc->>''Email'';
+                NEW.side1 = NEW.doc->>''Side1'';
+                NEW.side2 = NEW.doc->>''Side2'';
+                NEW.order_id = (NEW.doc->>''OrderId'')::integer;
+                NEW.order_date = (NEW.doc->>''OrderDate'')::timestamp;
+                NEW.order_status = NEW.doc->>''OrderStatus'';
+                RETURN NEW;
+              END;
+              ' LANGUAGE plpgsql;
+
+              CREATE TRIGGER update_columns_from_doc_trigger
+              BEFORE UPDATE OF doc ON orders
+              FOR EACH ROW
+              WHEN (OLD.doc IS DISTINCT FROM NEW.doc)
+              EXECUTE FUNCTION update_columns_from_doc();
+      rollback:
+        - sql:
+            sql: |
+              DROP TRIGGER IF EXISTS update_columns_from_doc_trigger ON orders;
+              DROP FUNCTION IF EXISTS update_columns_from_doc();
+  - changeSet:
+      id: 202511051209-create-trigger-for-columns-to-doc-sync
+      author: Stephen Atwell
+      comment: Create trigger to update doc JSON when columns are updated
+      labels: myticket-123
+      changes:
+        - sql:
+            sql: |
+              CREATE OR REPLACE FUNCTION update_doc_from_columns()
+              RETURNS TRIGGER AS
+              '
+              BEGIN
+                NEW.doc = jsonb_build_object(
+                  ''Main'', NEW.main,
+                  ''Drink'', NEW.drink,
+                  ''Email'', NEW.email,
+                  ''Side1'', NEW.side1,
+                  ''Side2'', NEW.side2,
+                  ''OrderId'', NEW.order_id,
+                  ''OrderDate'', NEW.order_date,
+                  ''OrderStatus'', NEW.order_status
+                );
+                RETURN NEW;
+              END;
+              ' LANGUAGE plpgsql;
+
+              CREATE TRIGGER update_doc_from_columns_trigger
+              BEFORE UPDATE OF main, drink, email, side1, side2, order_id, order_date, order_status ON orders
+              FOR EACH ROW
+              WHEN (
+                OLD.main IS DISTINCT FROM NEW.main OR
+                OLD.drink IS DISTINCT FROM NEW.drink OR
+                OLD.email IS DISTINCT FROM NEW.email OR
+                OLD.side1 IS DISTINCT FROM NEW.side1 OR
+                OLD.side2 IS DISTINCT FROM NEW.side2 OR
+                OLD.order_id IS DISTINCT FROM NEW.order_id OR
+                OLD.order_date IS DISTINCT FROM NEW.order_date OR
+                OLD.order_status IS DISTINCT FROM NEW.order_status
+              )
+              EXECUTE FUNCTION update_doc_from_columns();
+      rollback:
+        - sql:
+            sql: |
+              DROP TRIGGER IF EXISTS update_doc_from_columns_trigger ON orders;
+              DROP FUNCTION IF EXISTS update_doc_from_columns();
