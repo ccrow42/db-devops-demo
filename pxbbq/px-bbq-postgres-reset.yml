@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: Deployment                 
+metadata:
+  name: pxbbq-web  
+  namespace: pxbbq
+spec:
+  replicas: 1                    
+  selector:
+    matchLabels:
+      app: pxbbq-web
+  template:                      
+    metadata:
+      labels:                    
+        app: pxbbq-web
+    spec:                        
+      containers:
+      - name: pxbbq-web
+        image: quay.io/px-tme/pxbbq:v4.8.3 #New version is quay.io/px-tme/pxbbq:da3b26f old version is quay.io/px-tme/pxbbq:v4.8.3
+        env:
+        - name: SMOKE
+          value: "True"
+        - name: DB_TYPE
+          value: "postgres" #Leave empty to use MongoDB, set to "postgres" to use Postgres and POSTGRES_CONN
+        - name: POSTGRES_CONN
+          value: "postgresql://postgres:porxie@postgres:5432/pxbbq?sslmode=disable"  #sslmode might not be used for some postgres implementation.
+        - name: MONGO_INIT_USER
+          value: "porxie" #Mongo User with permissions to create additional databases and users. Typically "porxie" or "pds"
+        - name: MONGO_INIT_PASS
+          value: "porxie" #Required to connect the init user to the database. If using the mongodb yaml supplied, use "porxie"
+        - name: MONGO_NODES
+          value: "mongo" #COMMA SEPARATED LIST OF MONGO ENDPOINTS. Example: mongo1.dns.name,mongo2.dns.name
+        - name: MONGO_PORT
+          value: "27017" # MongoDB Port
+        - name: MONGO_USER
+          value: porxie #Mongo DB User that will be created by using the Init_User
+        - name: MONGO_PASS
+          value: "porxie" #Mongo DB Password for User that will be created by using the Init User
+        - name: API_SECRET_KEY
+          value: "mysecretkey"
+          ########## CHATBOT SECTION #############
+        - name: CHATBOT_ENABLED #If CHATBOT is set to False, the other variables in this section are not needed.
+          value: "False" #Set to True to enable a LLAMA3 chatbot - Requires the AIDemo to be deployed first
+        - name: PXBBQ_URI
+          value: "http://EXTERNAL_PXBBQ_URL_GOES_HERE" #MUST Be the external svc name for the PXBBQ application (PXBBQ NodePort/LoadBalaner)
+        - name: MODEL_SERVER_URI
+          value: "http://ollama.genai.svc.cluster.local:11434" #MUST be the internal svc name for the ollama service (CLUSERIP)
+        - name: NEO4J_URI
+          value: "bolt://database.genai.svc.cluster.local:7687" #MUST be the internal svc name for the new4j service (CLUSTERIP)
+        - name: NEO4J_USERNAME
+          value: "neo4j"
+        - name: NEO4J_PASSWORD
+          value: "password"
+        ############# CI/CD Demo Section ##############
+        - name: ARCHIVE_ORDERS
+          value: "False" #USED FOR CI/CD Database testing demos. Setting this to TRUE Wipes out all previous orders
+        imagePullPolicy: Always
+        ports:
+          - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /healthz # Health check built into PXBBQ
+            port: 8080
+          #initialDelaySeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /healthz # Health check built into PXBBQ
+            port: 8080
+          initialDelaySeconds: 15 
+          timeoutSeconds: 3  
+          periodSeconds: 10  
+          failureThreshold: 1 
+      tolerations:
+      - key: "node.kubernetes.io/unreachable"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 10
+      - key: "node.kubernetes.io/not-ready"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 10
+      terminationGracePeriodSeconds: 0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pxbbq-svc
+  annotations:
+    harness.io/primary-service: "true"
+  namespace: pxbbq
+  labels:
+    app: pxbbq-web
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: LoadBalancer
+  selector:
+    app: pxbbq-web
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pxbbq-svc-offline
+  annotations:
+    harness.io/stage-service: "true"
+  namespace: pxbbq
+  labels:
+    app: pxbbq-web
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: LoadBalancer
+  selector:
+    app: pxbbq-web
