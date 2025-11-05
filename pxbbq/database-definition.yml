@@ -125,3 +125,113 @@ databaseChangeLog:
       rollback:
         - delete:
             tableName: product
+  - changeSet:
+      id: 2025-11-05-add-columns-from-doc-json-menu-table-1
+      author: stephen.atwell@harness.io
+      labels: myticket-123
+      comment: Add new columns extracted from doc JSON column
+      changes:
+        - addColumn:
+            tableName: menu
+            columns:
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+              - column:
+                  name: type
+                  type: VARCHAR(50)
+              - column:
+                  name: price
+                  type: NUMERIC(10,2)
+              - column:
+                  name: vegetarian
+                  type: BOOLEAN
+      rollback:
+        - dropColumn:
+            tableName: menu
+            columnName: name
+        - dropColumn:
+            tableName: menu
+            columnName: type
+        - dropColumn:
+            tableName: menu
+            columnName: price
+        - dropColumn:
+            tableName: menu
+            columnName: vegetarian
+  - changeSet:
+      id: 2025-11-05-populate-new-columns-from-doc-json-menu-table-2
+      author: stephen.atwell@harness.io
+      labels: myticket-123
+      comment: Populate new columns with data from doc JSON
+      changes:
+        - sql:
+            sql: |
+              UPDATE menu
+              SET name = (doc->>'name'),
+                  type = (doc->>'type'),
+                  price = (doc->>'price')::NUMERIC(10,2),
+                  vegetarian = (doc->>'vegetarian')::BOOLEAN;
+      rollback:
+        - sql:
+            sql: |
+              UPDATE menu
+              SET name = NULL,
+                  type = NULL,
+                  price = NULL,
+                  vegetarian = NULL;
+  - changeSet:
+      id: 2025-11-05-create-trigger-to-sync-doc-with-columns-menu-table-3
+      author: stephen.atwell@harness.io
+      labels: myticket-123
+      comment: Create trigger to keep doc JSON in sync with individual columns
+      changes:
+        - sql:
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_menu_columns_to_doc()
+              RETURNS TRIGGER AS
+              '
+              BEGIN
+                NEW.doc = jsonb_build_object(
+                  ''name'', NEW.name,
+                  ''type'', NEW.type,
+                  ''price'', NEW.price,
+                  ''vegetarian'', NEW.vegetarian
+                )::text;
+                RETURN NEW;
+              END;
+              ' LANGUAGE plpgsql;
+
+              CREATE TRIGGER sync_menu_columns_to_doc_trigger
+              BEFORE UPDATE ON menu
+              FOR EACH ROW
+              WHEN (NEW.name IS DISTINCT FROM OLD.name OR
+                    NEW.type IS DISTINCT FROM OLD.type OR
+                    NEW.price IS DISTINCT FROM OLD.price OR
+                    NEW.vegetarian IS DISTINCT FROM OLD.vegetarian)
+              EXECUTE FUNCTION sync_menu_columns_to_doc();
+
+              CREATE OR REPLACE FUNCTION sync_menu_doc_to_columns()
+              RETURNS TRIGGER AS
+              '
+              BEGIN
+                NEW.name = (NEW.doc::jsonb->>''name'');
+                NEW.type = (NEW.doc::jsonb->>''type'');
+                NEW.price = (NEW.doc::jsonb->>''price'')::NUMERIC(10,2);
+                NEW.vegetarian = (NEW.doc::jsonb->>''vegetarian'')::BOOLEAN;
+                RETURN NEW;
+              END;
+              ' LANGUAGE plpgsql;
+
+              CREATE TRIGGER sync_menu_doc_to_columns_trigger
+              BEFORE UPDATE ON menu
+              FOR EACH ROW
+              WHEN (NEW.doc IS DISTINCT FROM OLD.doc)
+              EXECUTE FUNCTION sync_menu_doc_to_columns();
+      rollback:
+        - sql:
+            sql: |
+              DROP TRIGGER IF EXISTS sync_menu_columns_to_doc_trigger ON menu;
+              DROP FUNCTION IF EXISTS sync_menu_columns_to_doc();
+              DROP TRIGGER IF EXISTS sync_menu_doc_to_columns_trigger ON menu;
+              DROP FUNCTION IF EXISTS sync_menu_doc_to_columns();
