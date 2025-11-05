@@ -4,7 +4,7 @@ metadata:
   name: pxbbq-web  
   namespace: pxbbq
 spec:
-  replicas: 3                    
+  replicas: 1                    
   selector:
     matchLabels:
       app: pxbbq-web
