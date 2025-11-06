@@ -11,4 +11,4 @@
 21,"{""email"": ""tme@portworx.com"", ""lastname"": ""User"", ""password"": ""$2a$10$t/exZ9Xr04SuYUWvg.PhEe4Xrsywd83j6udXwYg/R0VmRYhnaPV5O"", ""firstname"": ""TME"", ""loyaltytier"": ""Gold""}"
 22,"{""email"": ""guest@portworx.com"", ""lastname"": ""User"", ""password"": ""$2a$10$peU7ZuwlaCLe71rFLvfvHeanKTrPzpnrtRp2Lc9WHTuRW1jrxldeq"", ""firstname"": ""Guest"", ""loyaltytier"": ""Gold""}"
 23,"{""Email"": ""elfie2002@gmail.com"", ""LastName"": ""Atwell"", ""Password"": ""$2a$10$y4kdooHT.xQZ/HftNIgKPON4uTv5wbCR.B7tJ8zcVdjGpCMxukl9m"", ""FirstName"": ""Stephen"", ""LoyaltyTier"": ""Gold""}"
-23,"{""Email"": ""chris@ccrow.org"", ""LastName"": ""Crow"", ""Password"": ""$2a$10$y4kdooHT.xQZ/HftNIgKPON4uTv5wbCR.B7tJ8zcVdjGpCMxukl9m"", ""FirstName"": ""Christopher"", ""LoyaltyTier"": ""bronze""}"
+24,"{""Email"": ""chris@ccrow.org"", ""LastName"": ""Crow"", ""Password"": ""$2a$10$y4kdooHT.xQZ/HftNIgKPON4uTv5wbCR.B7tJ8zcVdjGpCMxukl9m"", ""FirstName"": ""Christopher"", ""LoyaltyTier"": ""bronze""}"
