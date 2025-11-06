@@ -126,6 +126,20 @@ databaseChangeLog:
         - delete:
             tableName: product
   - changeSet:
+      id: initialLogins
+      author: stephenatwell
+      changes:
+        - delete:
+            tableName: registrations
+        - loadUpdateData:
+            file: reference-data/registrations_v1.csv
+            relativeToChangelogFile: true
+            tableName: registrations
+            primaryKey: id
+      rollback:
+        - delete:
+            tableName: registrations
+  - changeSet:
       id: demostart
       author: stephenatwell
       changes:
