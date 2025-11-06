@@ -9,6 +9,7 @@ data:
   POSTGRES_DB: pxbbq
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: porxie
+  PGDATA: /var/lib/postgresql/data/pgdata
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -47,7 +48,7 @@ spec:
             - configMapRef:
                 name: postgres-secret
           volumeMounts:
-            - mountPath: /var/lib/postgresql
+            - mountPath: /var/lib/postgresql/data
               name: postgresdata
           livenessProbe:
             exec:
