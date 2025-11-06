@@ -87,7 +87,6 @@ metadata:
   name: pxbbq-svc
   annotations:
     harness.io/primary-service: "true"
-  namespace: pxbbq
   labels:
     app: pxbbq-web
 spec:
@@ -104,7 +103,6 @@ metadata:
   name: pxbbq-svc-offline
   annotations:
     harness.io/stage-service: "true"
-  namespace: pxbbq
   labels:
     app: pxbbq-web
 spec:
