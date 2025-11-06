@@ -11,18 +11,18 @@ data:
   POSTGRES_PASSWORD: porxie
   PGDATA: /var/lib/postgresql/data/pgdata
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: postgres-pvc
-  #namespace: pxbbq
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
----
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: postgres-pvc
+#   #namespace: pxbbq
+# spec:
+#   accessModes:
+#     - ReadWriteOnce
+#   resources:
+#     requests:
+#       storage: 5Gi
+# ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -62,7 +62,7 @@ spec:
       volumes:
         - name: postgresdata
           persistentVolumeClaim:
-            claimName: postgres-pvc
+            claimName: postgres-pvc-clone
 ---
 apiVersion: v1
 kind: Service

@@ -1,0 +1,36 @@
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: pd-snapshot-class
+  annotations:
+    snapshot.storage.kubernetes.io/is-default-class: "true"
+driver: pd.csi.storage.gke.io
+deletionPolicy: Delete
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: allow-staging-pvc
+  namespace: pxbbq
+spec:
+  from:
+  - group: ""
+    kind: PersistentVolumeClaim
+    namespace: pxbbq-prod
+  to:
+  - group: snapshot.storage.k8s.io
+    kind: VolumeSnapshot
+    name: postgres-snap
+---
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  name: px-csi-db
+parameters:
+  type: pd-balanced
+provisioner: pd.csi.storage.gke.io
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
