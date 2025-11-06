@@ -15,10 +15,10 @@ spec:
     spec:                        
       containers:
       - name: pxbbq-web
-        image: quay.io/px-tme/pxbbq:da3b26f #New version is quay.io/px-tme/pxbbq:da3b26f old version is quay.io/px-tme/pxbbq:v4.8.3
+        image: quay.io/px-tme/pxbbq:v4.8.3 #New version is quay.io/px-tme/pxbbq:da3b26f old version is quay.io/px-tme/pxbbq:v4.8.3
         env:
-        - name: SMOKE
-          value: "False"
+        #- name: SMOKE
+        #  value: "True"
         - name: DB_TYPE
           value: "postgres" #Leave empty to use MongoDB, set to "postgres" to use Postgres and POSTGRES_CONN
         - name: POSTGRES_CONN
