@@ -145,3 +145,107 @@ databaseChangeLog:
       changes:
         - tagDatabase:
             tag: demo-reset
+  - changeSet:
+      id: 20251106-add-json-columns-to-orders-table
+      author: stephen.atwell@harness.io
+      comment: Add individual columns for each JSON field in the doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: main
+                  type: VARCHAR(255)
+              - column:
+                  name: drink
+                  type: VARCHAR(255)
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+              - column:
+                  name: side1
+                  type: VARCHAR(255)
+              - column:
+                  name: side2
+                  type: VARCHAR(255)
+              - column:
+                  name: orderid
+                  type: BIGINT
+              - column:
+                  name: orderdate
+                  type: TIMESTAMP
+              - column:
+                  name: orderstatus
+                  type: VARCHAR(50)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: main
+        - dropColumn:
+            tableName: orders
+            columnName: drink
+        - dropColumn:
+            tableName: orders
+            columnName: email
+        - dropColumn:
+            tableName: orders
+            columnName: side1
+        - dropColumn:
+            tableName: orders
+            columnName: side2
+        - dropColumn:
+            tableName: orders
+            columnName: orderid
+        - dropColumn:
+            tableName: orders
+            columnName: orderdate
+        - dropColumn:
+            tableName: orders
+            columnName: orderstatus
+  - changeSet:
+      id: 20251106-populate-json-columns-from-doc
+      author: stephen.atwell@harness.io
+      comment: Populate the new columns with data from the doc JSON column
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET main = doc->>'Main',
+                  drink = doc->>'Drink',
+                  email = doc->>'Email',
+                  side1 = doc->>'Side1',
+                  side2 = doc->>'Side2',
+                  orderid = (doc->>'OrderId')::BIGINT,
+                  orderdate = (doc->>'OrderDate')::TIMESTAMP,
+                  orderstatus = doc->>'OrderStatus';
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET main = NULL,
+                  drink = NULL,
+                  email = NULL,
+                  side1 = NULL,
+                  side2 = NULL,
+                  orderid = NULL,
+                  orderdate = NULL,
+                  orderstatus = NULL;
+  - changeSet:
+      id: 20251106-create-trigger-for-json-sync
+      author: stephen.atwell@harness.io
+      comment: Create trigger to keep doc JSON and individual columns in sync
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: "CREATE OR REPLACE FUNCTION sync_orders_columns_to_doc()\nRETURNS TRIGGER AS $$\nBEGIN\n  IF TG_OP = 'UPDATE' THEN\n    -- When individual columns are updated, update the doc JSON\n    IF (NEW.main IS DISTINCT FROM OLD.main OR\n        NEW.drink IS DISTINCT FROM OLD.drink OR\n        NEW.email IS DISTINCT FROM OLD.email OR\n        NEW.side1 IS DISTINCT FROM OLD.side1 OR\n        NEW.side2 IS DISTINCT FROM OLD.side2 OR\n        NEW.orderid IS DISTINCT FROM OLD.orderid OR\n        NEW.orderdate IS DISTINCT FROM OLD.orderdate OR\n        NEW.orderstatus IS DISTINCT FROM OLD.orderstatus) THEN\n      \n      NEW.doc = jsonb_build_object(\n        'Main', NEW.main,\n        'Drink', NEW.drink,\n        'Email', NEW.email,\n        'Side1', NEW.side1,\n        'Side2', NEW.side2,\n        'OrderId', NEW.orderid,\n        'OrderDate', NEW.orderdate,\n        'OrderStatus', NEW.orderstatus\n      );\n    END IF;\n    \n    -- When doc JSON is updated, update individual columns\n    IF NEW.doc IS DISTINCT FROM OLD.doc THEN\n      NEW.main = NEW.doc->>'Main';\n      NEW.drink = NEW.doc->>'Drink';\n      NEW.email = NEW.doc->>'Email';\n      NEW.side1 = NEW.doc->>'Side1';\n      NEW.side2 = NEW.doc->>'Side2';\n      NEW.orderid = (NEW.doc->>'OrderId')::BIGINT;\n      NEW.orderdate = (NEW.doc->>'OrderDate')::TIMESTAMP;\n      NEW.orderstatus = NEW.doc->>'OrderStatus';\n    END IF;\n  END IF;\n  \n  RETURN NEW;\nEND;\n$$ LANGUAGE plpgsql;\n\nCREATE TRIGGER sync_orders_columns_trigger\nBEFORE UPDATE ON orders\nFOR EACH ROW\nEXECUTE FUNCTION sync_orders_columns_to_doc();\n"
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS sync_orders_columns_trigger ON orders;
+              DROP FUNCTION IF EXISTS sync_orders_columns_to_doc();
