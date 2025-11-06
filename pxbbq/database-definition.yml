@@ -126,167 +126,22 @@ databaseChangeLog:
         - delete:
             tableName: product
   - changeSet:
+      id: initialLogins
+      author: stephenatwell
+      changes:
+        - delete:
+            tableName: registrations
+        - loadUpdateData:
+            file: reference-data/registrations_v1.csv
+            relativeToChangelogFile: true
+            tableName: registrations
+            primaryKey: id
+      rollback:
+        - delete:
+            tableName: registrations
+  - changeSet:
       id: demostart
       author: stephenatwell
       changes:
         - tagDatabase:
             tag: demo-reset
-  - changeSet:
-      id: 2025-11-06-add-columns-from-json-doc-to-orders-table
-      author: stephen.atwell@harness.io
-      comment: Add individual columns for each field in the doc JSON column
-      labels: myticket-123
-      changes:
-        - addColumn:
-            tableName: orders
-            columns:
-              - column:
-                  name: Main
-                  type: VARCHAR(255)
-              - column:
-                  name: Drink
-                  type: VARCHAR(255)
-              - column:
-                  name: Email
-                  type: VARCHAR(255)
-              - column:
-                  name: Side1
-                  type: VARCHAR(255)
-              - column:
-                  name: Side2
-                  type: VARCHAR(255)
-              - column:
-                  name: OrderId
-                  type: BIGINT
-              - column:
-                  name: OrderDate
-                  type: TIMESTAMP
-              - column:
-                  name: OrderStatus
-                  type: VARCHAR(50)
-      rollback:
-        - dropColumn:
-            tableName: orders
-            columnName: Main
-        - dropColumn:
-            tableName: orders
-            columnName: Drink
-        - dropColumn:
-            tableName: orders
-            columnName: Email
-        - dropColumn:
-            tableName: orders
-            columnName: Side1
-        - dropColumn:
-            tableName: orders
-            columnName: Side2
-        - dropColumn:
-            tableName: orders
-            columnName: OrderId
-        - dropColumn:
-            tableName: orders
-            columnName: OrderDate
-        - dropColumn:
-            tableName: orders
-            columnName: OrderStatus
-  - changeSet:
-      id: 2025-11-06-populate-new-columns-from-json-doc
-      author: stephen.atwell@harness.io
-      comment: Populate the new columns with data from the doc JSON column
-      labels: myticket-123
-      changes:
-        - sql:
-            splitStatements: false
-            sql: |
-              UPDATE orders
-              SET "Main" = (doc->>'Main'),
-                  "Drink" = (doc->>'Drink'),
-                  "Email" = (doc->>'Email'),
-                  "Side1" = (doc->>'Side1'),
-                  "Side2" = (doc->>'Side2'),
-                  "OrderId" = (doc->>'OrderId')::BIGINT,
-                  "OrderDate" = (doc->>'OrderDate')::TIMESTAMP,
-                  "OrderStatus" = (doc->>'OrderStatus');
-      rollback:
-        - sql:
-            splitStatements: false
-            sql: |
-              UPDATE orders
-              SET "Main" = NULL,
-                  "Drink" = NULL,
-                  "Email" = NULL,
-                  "Side1" = NULL,
-                  "Side2" = NULL,
-                  "OrderId" = NULL,
-                  "OrderDate" = NULL,
-                  "OrderStatus" = NULL;
-  - changeSet:
-      id: 2025-11-06-create-trigger-to-sync-json-to-columns
-      author: stephen.atwell@harness.io
-      comment: Create trigger to keep individual columns in sync with doc JSON column
-      labels: myticket-123
-      changes:
-        - sql:
-            splitStatements: false
-            sql: |
-              CREATE OR REPLACE FUNCTION sync_doc_to_columns()
-              RETURNS TRIGGER AS $$
-              BEGIN
-                NEW."Main" = NEW.doc->>'Main';
-                NEW."Drink" = NEW.doc->>'Drink';
-                NEW."Email" = NEW.doc->>'Email';
-                NEW."Side1" = NEW.doc->>'Side1';
-                NEW."Side2" = NEW.doc->>'Side2';
-                NEW."OrderId" = (NEW.doc->>'OrderId')::BIGINT;
-                NEW."OrderDate" = (NEW.doc->>'OrderDate')::TIMESTAMP;
-                NEW."OrderStatus" = NEW.doc->>'OrderStatus';
-                RETURN NEW;
-              END;
-              $$ LANGUAGE plpgsql;
-
-              CREATE TRIGGER sync_doc_to_columns_trigger
-              BEFORE INSERT OR UPDATE OF doc ON orders
-              FOR EACH ROW
-              EXECUTE FUNCTION sync_doc_to_columns();
-      rollback:
-        - sql:
-            splitStatements: false
-            sql: |
-              DROP TRIGGER IF EXISTS sync_doc_to_columns_trigger ON orders;
-              DROP FUNCTION IF EXISTS sync_doc_to_columns();
-  - changeSet:
-      id: 2025-11-06-create-trigger-to-sync-columns-to-json
-      author: stephen.atwell@harness.io
-      comment: Create trigger to keep doc JSON column in sync with individual columns
-      labels: myticket-123
-      changes:
-        - sql:
-            splitStatements: false
-            sql: |
-              CREATE OR REPLACE FUNCTION sync_columns_to_doc()
-              RETURNS TRIGGER AS $$
-              BEGIN
-                NEW.doc = jsonb_build_object(
-                  'Main', NEW."Main",
-                  'Drink', NEW."Drink",
-                  'Email', NEW."Email",
-                  'Side1', NEW."Side1",
-                  'Side2', NEW."Side2",
-                  'OrderId', NEW."OrderId",
-                  'OrderDate', NEW."OrderDate",
-                  'OrderStatus', NEW."OrderStatus"
-                );
-                RETURN NEW;
-              END;
-              $$ LANGUAGE plpgsql;
-
-              CREATE TRIGGER sync_columns_to_doc_trigger
-              BEFORE UPDATE OF "Main", "Drink", "Email", "Side1", "Side2", "OrderId", "OrderDate", "OrderStatus" ON orders
-              FOR EACH ROW
-              EXECUTE FUNCTION sync_columns_to_doc();
-      rollback:
-        - sql:
-            splitStatements: false
-            sql: |
-              DROP TRIGGER IF EXISTS sync_columns_to_doc_trigger ON orders;
-              DROP FUNCTION IF EXISTS sync_columns_to_doc();
