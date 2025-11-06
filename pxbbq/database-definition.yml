@@ -160,3 +160,172 @@ databaseChangeLog:
       changes:
         - tagDatabase:
             tag: demo-reset
+  - changeSet:
+      id: extract-json-fields-add-columns-20251106233420
+      author: stephen.atwell@harness.io
+      comment: Add columns to extract JSON fields from doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: main
+                  type: TEXT
+              - column:
+                  name: drink
+                  type: TEXT
+              - column:
+                  name: email
+                  type: TEXT
+              - column:
+                  name: side1
+                  type: TEXT
+              - column:
+                  name: side2
+                  type: TEXT
+              - column:
+                  name: orderid
+                  type: INTEGER
+              - column:
+                  name: orderdate
+                  type: TIMESTAMP
+              - column:
+                  name: orderstatus
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: main
+        - dropColumn:
+            tableName: orders
+            columnName: drink
+        - dropColumn:
+            tableName: orders
+            columnName: email
+        - dropColumn:
+            tableName: orders
+            columnName: side1
+        - dropColumn:
+            tableName: orders
+            columnName: side2
+        - dropColumn:
+            tableName: orders
+            columnName: orderid
+        - dropColumn:
+            tableName: orders
+            columnName: orderdate
+        - dropColumn:
+            tableName: orders
+            columnName: orderstatus
+  - changeSet:
+      id: extract-json-fields-populate-columns-20251106233421
+      author: stephen.atwell@harness.io
+      comment: Populate new columns with data extracted from doc JSON column
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET main = (doc->>'Main'),
+                  drink = (doc->>'Drink'),
+                  email = (doc->>'Email'),
+                  side1 = (doc->>'Side1'),
+                  side2 = (doc->>'Side2'),
+                  orderid = (doc->>'OrderId')::INTEGER,
+                  orderdate = (doc->>'OrderDate')::TIMESTAMP,
+                  orderstatus = (doc->>'OrderStatus');
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET main = NULL,
+                  drink = NULL,
+                  email = NULL,
+                  side1 = NULL,
+                  side2 = NULL,
+                  orderid = NULL,
+                  orderdate = NULL,
+                  orderstatus = NULL;
+  - changeSet:
+      id: extract-json-fields-create-trigger-20251106233422
+      author: stephen.atwell@harness.io
+      comment: Create trigger to keep doc and new columns in sync
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              -- Function to update columns when doc changes
+              CREATE OR REPLACE FUNCTION update_order_columns()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.main = NEW.doc->>'Main';
+                NEW.drink = NEW.doc->>'Drink';
+                NEW.email = NEW.doc->>'Email';
+                NEW.side1 = NEW.doc->>'Side1';
+                NEW.side2 = NEW.doc->>'Side2';
+                NEW.orderid = (NEW.doc->>'OrderId')::INTEGER;
+                NEW.orderdate = (NEW.doc->>'OrderDate')::TIMESTAMP;
+                NEW.orderstatus = NEW.doc->>'OrderStatus';
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              -- Function to update doc when columns change
+              CREATE OR REPLACE FUNCTION update_order_doc()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.doc = jsonb_build_object(
+                  'Main', NEW.main,
+                  'Drink', NEW.drink,
+                  'Email', NEW.email,
+                  'Side1', NEW.side1,
+                  'Side2', NEW.side2,
+                  'OrderId', NEW.orderid,
+                  'OrderDate', NEW.orderdate,
+                  'OrderStatus', NEW.orderstatus
+                );
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              -- Trigger to update columns when doc changes
+              CREATE TRIGGER update_order_columns_trigger
+              BEFORE UPDATE OF doc ON orders
+              FOR EACH ROW
+              WHEN (OLD.doc IS DISTINCT FROM NEW.doc)
+              EXECUTE FUNCTION update_order_columns();
+
+              -- Trigger to update doc when any column changes
+              CREATE TRIGGER update_order_doc_trigger
+              BEFORE UPDATE OF main, drink, email, side1, side2, orderid, orderdate, orderstatus ON orders
+              FOR EACH ROW
+              WHEN (
+                OLD.main IS DISTINCT FROM NEW.main OR
+                OLD.drink IS DISTINCT FROM NEW.drink OR
+                OLD.email IS DISTINCT FROM NEW.email OR
+                OLD.side1 IS DISTINCT FROM NEW.side1 OR
+                OLD.side2 IS DISTINCT FROM NEW.side2 OR
+                OLD.orderid IS DISTINCT FROM NEW.orderid OR
+                OLD.orderdate IS DISTINCT FROM NEW.orderdate OR
+                OLD.orderstatus IS DISTINCT FROM NEW.orderstatus
+              )
+              EXECUTE FUNCTION update_order_doc();
+
+              -- Trigger for new inserts
+              CREATE TRIGGER insert_order_columns_trigger
+              BEFORE INSERT ON orders
+              FOR EACH ROW
+              EXECUTE FUNCTION update_order_columns();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS update_order_columns_trigger ON orders;
+              DROP TRIGGER IF EXISTS update_order_doc_trigger ON orders;
+              DROP TRIGGER IF EXISTS insert_order_columns_trigger ON orders;
+              DROP FUNCTION IF EXISTS update_order_columns();
+              DROP FUNCTION IF EXISTS update_order_doc();
