@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment                 
 metadata:
   name: pxbbq-web  
-  namespace: pxbbq
 spec:
   replicas: 1                    
   selector:
