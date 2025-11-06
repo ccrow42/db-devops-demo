@@ -62,7 +62,7 @@ spec:
       volumes:
         - name: postgresdata
           persistentVolumeClaim:
-            claimName: postgres-pvc-clone
+            claimName: postgres-pvc
 ---
 apiVersion: v1
 kind: Service

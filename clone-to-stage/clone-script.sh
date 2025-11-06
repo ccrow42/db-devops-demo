@@ -13,7 +13,7 @@ DEPLOYMENT_NAME="postgres"
 kubectl -n ${NEW_NAMESPACE} scale deployment ${DEPLOYMENT_NAME} --replicas=0
 
 # Clean up resources
-kubectl -n ${NEW_NAMESPACE} delete pvc ${PVC_NAME}-clone --ignore-not-found
+kubectl -n ${NEW_NAMESPACE} delete pvc ${PVC_NAME} --ignore-not-found
 kubectl -n ${NAMESPACE} delete volumesnapshot ${SNAPSHOT_NAME} --ignore-not-found
 
 
@@ -80,7 +80,7 @@ cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: ${PVC_NAME}-clone
+  name: ${PVC_NAME}
   namespace: ${NEW_NAMESPACE}
 spec:
   accessModes:
@@ -99,3 +99,8 @@ kubectl patch pv ${PV_NAME} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete
 
 
 echo "Snapshot, clone, and new PVC created successfully!"
+
+kubectl wait --for=condition=ready pod -l app=postgres -n "$NEW_NAMESPACE" --timeout=60s
+
+#kubectl wait --for=condition=ready pod -l app=pxbbq-web -n "$NEW_NAMESPACE" --timeout=60s
+
