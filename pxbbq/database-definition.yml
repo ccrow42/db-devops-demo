@@ -160,3 +160,234 @@ databaseChangeLog:
       changes:
         - tagDatabase:
             tag: demo-reset
+  - changeSet:
+      id: extract-json-fields-from-orders-doc-column-20251107-1853
+      author: Stephen Atwell
+      comment: Add separate columns for each JSON field from doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: main
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: main
+  - changeSet:
+      id: extract-json-fields-from-orders-doc-column-drink-20251107-1853
+      author: Stephen Atwell
+      comment: Add drink column extracted from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: drink
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: drink
+  - changeSet:
+      id: extract-json-fields-from-orders-doc-column-email-20251107-1853
+      author: Stephen Atwell
+      comment: Add email column extracted from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: email
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: email
+  - changeSet:
+      id: extract-json-fields-from-orders-doc-column-side1-20251107-1853
+      author: Stephen Atwell
+      comment: Add side1 column extracted from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: side1
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: side1
+  - changeSet:
+      id: extract-json-fields-from-orders-doc-column-side2-20251107-1853
+      author: Stephen Atwell
+      comment: Add side2 column extracted from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: side2
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: side2
+  - changeSet:
+      id: extract-json-fields-from-orders-doc-column-orderid-20251107-1853
+      author: Stephen Atwell
+      comment: Add orderid column extracted from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: orderid
+                  type: INTEGER
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: orderid
+  - changeSet:
+      id: extract-json-fields-from-orders-doc-column-orderdate-20251107-1853
+      author: Stephen Atwell
+      comment: Add orderdate column extracted from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: orderdate
+                  type: TIMESTAMP
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: orderdate
+  - changeSet:
+      id: extract-json-fields-from-orders-doc-column-orderstatus-20251107-1853
+      author: Stephen Atwell
+      comment: Add orderstatus column extracted from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: orderstatus
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: orderstatus
+  - changeSet:
+      id: populate-extracted-json-fields-from-orders-doc-20251107-1853
+      author: Stephen Atwell
+      comment: Populate new columns with data from doc JSON column
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET main = (doc::json->>'Main'),
+                  drink = (doc::json->>'Drink'),
+                  email = (doc::json->>'Email'),
+                  side1 = (doc::json->>'Side1'),
+                  side2 = (doc::json->>'Side2'),
+                  orderid = (doc::json->>'OrderId')::INTEGER,
+                  orderdate = (doc::json->>'OrderDate')::TIMESTAMP,
+                  orderstatus = (doc::json->>'OrderStatus');
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              -- No rollback needed as original doc column is preserved
+  - changeSet:
+      id: create-trigger-to-sync-json-fields-20251107-1853
+      author: Stephen Atwell
+      comment: Create trigger to keep doc and individual columns in sync
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              -- Function to sync from doc to columns
+              CREATE OR REPLACE FUNCTION sync_doc_to_columns()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.main = NEW.doc::json->>'Main';
+                NEW.drink = NEW.doc::json->>'Drink';
+                NEW.email = NEW.doc::json->>'Email';
+                NEW.side1 = NEW.doc::json->>'Side1';
+                NEW.side2 = NEW.doc::json->>'Side2';
+                NEW.orderid = (NEW.doc::json->>'OrderId')::INTEGER;
+                NEW.orderdate = (NEW.doc::json->>'OrderDate')::TIMESTAMP;
+                NEW.orderstatus = NEW.doc::json->>'OrderStatus';
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              -- Function to sync from columns to doc
+              CREATE OR REPLACE FUNCTION sync_columns_to_doc()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.doc = json_build_object(
+                  'Main', NEW.main,
+                  'Drink', NEW.drink,
+                  'Email', NEW.email,
+                  'Side1', NEW.side1,
+                  'Side2', NEW.side2,
+                  'OrderId', NEW.orderid,
+                  'OrderDate', NEW.orderdate,
+                  'OrderStatus', NEW.orderstatus
+                )::text;
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              -- Trigger for doc column changes
+              CREATE TRIGGER sync_doc_changes
+              BEFORE UPDATE OF doc ON orders
+              FOR EACH ROW
+              WHEN (OLD.doc IS DISTINCT FROM NEW.doc)
+              EXECUTE FUNCTION sync_doc_to_columns();
+
+              -- Trigger for individual column changes
+              CREATE TRIGGER sync_column_changes
+              BEFORE UPDATE OF main, drink, email, side1, side2, orderid, orderdate, orderstatus ON orders
+              FOR EACH ROW
+              WHEN (
+                OLD.main IS DISTINCT FROM NEW.main OR
+                OLD.drink IS DISTINCT FROM NEW.drink OR
+                OLD.email IS DISTINCT FROM NEW.email OR
+                OLD.side1 IS DISTINCT FROM NEW.side1 OR
+                OLD.side2 IS DISTINCT FROM NEW.side2 OR
+                OLD.orderid IS DISTINCT FROM NEW.orderid OR
+                OLD.orderdate IS DISTINCT FROM NEW.orderdate OR
+                OLD.orderstatus IS DISTINCT FROM NEW.orderstatus
+              )
+              EXECUTE FUNCTION sync_columns_to_doc();
+
+              -- Trigger for new rows
+              CREATE TRIGGER sync_new_rows
+              BEFORE INSERT ON orders
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_doc_to_columns();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS sync_doc_changes ON orders;
+              DROP TRIGGER IF EXISTS sync_column_changes ON orders;
+              DROP TRIGGER IF EXISTS sync_new_rows ON orders;
+              DROP FUNCTION IF EXISTS sync_doc_to_columns();
+              DROP FUNCTION IF EXISTS sync_columns_to_doc();
