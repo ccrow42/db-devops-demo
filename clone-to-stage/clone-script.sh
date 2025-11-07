@@ -100,7 +100,7 @@ kubectl patch pv ${PV_NAME} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete
 
 echo "Snapshot, clone, and new PVC created successfully!"
 
-kubectl wait --for=condition=ready pod -l app=postgres -n "$NEW_NAMESPACE" --timeout=60s
+kubectl wait --for=condition=ready pod -l app=postgres -n "$NEW_NAMESPACE" --timeout=180s
 
 #kubectl wait --for=condition=ready pod -l app=pxbbq-web -n "$NEW_NAMESPACE" --timeout=60s
 
