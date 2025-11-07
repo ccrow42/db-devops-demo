@@ -140,6 +140,21 @@ databaseChangeLog:
         - delete:
             tableName: registrations
   - changeSet:
+      id: initialOrders-prod
+      context: prodonly
+      author: stephenatwell
+      changes:
+        - delete:
+            tableName: orders
+        - loadUpdateData:
+            file: reference-data/orders_v1.csv
+            relativeToChangelogFile: true
+            tableName: orders
+            primaryKey: id
+      rollback:
+        - delete:
+            tableName: registrations
+  - changeSet:
       id: demostart
       author: stephenatwell
       changes:

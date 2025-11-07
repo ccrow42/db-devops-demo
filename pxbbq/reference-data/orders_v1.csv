@@ -1,0 +1,5 @@
+"id","doc"
+1,"{""Main"": ""Brisket"", ""Drink"": ""Porx Special"", ""Email"": ""guest@portworx.com"", ""Side1"": ""Fried Pickles"", ""Side2"": ""Fried Pickles"", ""OrderId"": 10000, ""OrderDate"": ""2025-11-06T18:57:12.712123279Z"", ""OrderStatus"": ""preparing""}"
+2,"{""Main"": ""Brisket"", ""Drink"": ""Cola"", ""Email"": ""guest@portworx.com"", ""Side1"": ""Fried Pickles"", ""Side2"": ""Fried Pickles"", ""OrderId"": 10001, ""OrderDate"": ""2025-11-06T22:03:45.919437787Z"", ""OrderStatus"": ""preparing""}"
+3,"{""Main"": ""Brisket"", ""Drink"": ""Cola"", ""Email"": ""chris@ccrow.org"", ""Side1"": ""Fried Pickles"", ""Side2"": ""Fried Pickles"", ""OrderId"": 10002, ""OrderDate"": ""2025-11-06T22:03:45.919437787Z"", ""OrderStatus"": ""delivered""}"
+4,"{""Main"": ""Brisket"", ""Drink"": ""Cola"", ""Email"": ""elfie2002@gmail.com"", ""Side1"": ""Fried Pickles"", ""Side2"": ""Fried Pickles"", ""OrderId"": 10003, ""OrderDate"": ""2025-11-06T22:03:45.919437787Z"", ""OrderStatus"": ""delivered""}"
