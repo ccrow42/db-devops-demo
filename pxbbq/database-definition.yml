@@ -160,3 +160,232 @@ databaseChangeLog:
       changes:
         - tagDatabase:
             tag: demo-reset
+  - changeSet:
+      id: 20251107-2305-add-columns-from-doc-json-orders-table
+      author: Stephen Atwell
+      comment: Add separate columns for each field in the doc JSON column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: main
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: main
+  - changeSet:
+      id: 20251107-2305-add-drink-column-orders-table
+      author: Stephen Atwell
+      comment: Add drink column from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: drink
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: drink
+  - changeSet:
+      id: 20251107-2305-add-email-column-orders-table
+      author: Stephen Atwell
+      comment: Add email column from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: email
+  - changeSet:
+      id: 20251107-2305-add-side1-column-orders-table
+      author: Stephen Atwell
+      comment: Add side1 column from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: side1
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: side1
+  - changeSet:
+      id: 20251107-2305-add-side2-column-orders-table
+      author: Stephen Atwell
+      comment: Add side2 column from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: side2
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: side2
+  - changeSet:
+      id: 20251107-2305-add-orderid-column-orders-table
+      author: Stephen Atwell
+      comment: Add orderid column from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: orderid
+                  type: INTEGER
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: orderid
+  - changeSet:
+      id: 20251107-2305-add-orderdate-column-orders-table
+      author: Stephen Atwell
+      comment: Add orderdate column from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: orderdate
+                  type: TIMESTAMP
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: orderdate
+  - changeSet:
+      id: 20251107-2305-add-orderstatus-column-orders-table
+      author: Stephen Atwell
+      comment: Add orderstatus column from doc JSON
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: orderstatus
+                  type: VARCHAR(50)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: orderstatus
+  - changeSet:
+      id: 20251107-2305-populate-columns-from-doc-json
+      author: Stephen Atwell
+      comment: Populate the new columns with data from the doc JSON column
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET main = doc->>'Main',
+                  drink = doc->>'Drink',
+                  email = doc->>'Email',
+                  side1 = doc->>'Side1',
+                  side2 = doc->>'Side2',
+                  orderid = (doc->>'OrderId')::INTEGER,
+                  orderdate = (doc->>'OrderDate')::TIMESTAMP,
+                  orderstatus = doc->>'OrderStatus';
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET main = NULL,
+                  drink = NULL,
+                  email = NULL,
+                  side1 = NULL,
+                  side2 = NULL,
+                  orderid = NULL,
+                  orderdate = NULL,
+                  orderstatus = NULL;
+  - changeSet:
+      id: 20251107-2305-create-trigger-sync-doc-to-columns
+      author: Stephen Atwell
+      comment: Create trigger to sync data from doc JSON to columns
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_doc_to_columns()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.main = NEW.doc->>'Main';
+                NEW.drink = NEW.doc->>'Drink';
+                NEW.email = NEW.doc->>'Email';
+                NEW.side1 = NEW.doc->>'Side1';
+                NEW.side2 = NEW.doc->>'Side2';
+                NEW.orderid = (NEW.doc->>'OrderId')::INTEGER;
+                NEW.orderdate = (NEW.doc->>'OrderDate')::TIMESTAMP;
+                NEW.orderstatus = NEW.doc->>'OrderStatus';
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              CREATE TRIGGER trigger_sync_doc_to_columns
+              BEFORE INSERT OR UPDATE OF doc ON orders
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_doc_to_columns();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS trigger_sync_doc_to_columns ON orders;
+              DROP FUNCTION IF EXISTS sync_doc_to_columns();
+  - changeSet:
+      id: 20251107-2305-create-trigger-sync-columns-to-doc
+      author: Stephen Atwell
+      comment: Create trigger to sync data from columns to doc JSON
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_columns_to_doc()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.doc = jsonb_build_object(
+                  'Main', NEW.main,
+                  'Drink', NEW.drink,
+                  'Email', NEW.email,
+                  'Side1', NEW.side1,
+                  'Side2', NEW.side2,
+                  'OrderId', NEW.orderid,
+                  'OrderDate', NEW.orderdate,
+                  'OrderStatus', NEW.orderstatus
+                );
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              CREATE TRIGGER trigger_sync_columns_to_doc
+              BEFORE UPDATE OF main, drink, email, side1, side2, orderid, orderdate, orderstatus ON orders
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_columns_to_doc();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS trigger_sync_columns_to_doc ON orders;
+              DROP FUNCTION IF EXISTS sync_columns_to_doc();
