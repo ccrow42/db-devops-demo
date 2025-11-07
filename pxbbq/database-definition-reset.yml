@@ -27,10 +27,10 @@ databaseChangeLog:
             columns:
               - column:
                   autoIncrement: true
-                  constraints:
-                    nullable: false
-                    primaryKey: true
-                    primaryKeyName: orders_pkey
+                  #constraints:
+                  #  nullable: false
+                  #  primaryKey: true
+                  #  primaryKeyName: orders_pkey
                   name: id
                   type: INTEGER
               - column:
