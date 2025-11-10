@@ -160,3 +160,225 @@ databaseChangeLog:
       changes:
         - tagDatabase:
             tag: demo-reset
+  - changeSet:
+      id: 20251110-add-columns-from-json-doc-1
+      author: Stephen Atwell
+      comment: Add columns to extract JSON fields from doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: main
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: main
+  - changeSet:
+      id: 20251110-add-columns-from-json-doc-2
+      author: Stephen Atwell
+      comment: Add columns to extract JSON fields from doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: drink
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: drink
+  - changeSet:
+      id: 20251110-add-columns-from-json-doc-3
+      author: Stephen Atwell
+      comment: Add columns to extract JSON fields from doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: email
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: email
+  - changeSet:
+      id: 20251110-add-columns-from-json-doc-4
+      author: Stephen Atwell
+      comment: Add columns to extract JSON fields from doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: side1
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: side1
+  - changeSet:
+      id: 20251110-add-columns-from-json-doc-5
+      author: Stephen Atwell
+      comment: Add columns to extract JSON fields from doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: side2
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: side2
+  - changeSet:
+      id: 20251110-add-columns-from-json-doc-6
+      author: Stephen Atwell
+      comment: Add columns to extract JSON fields from doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: orderid
+                  type: INTEGER
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: orderid
+  - changeSet:
+      id: 20251110-add-columns-from-json-doc-7
+      author: Stephen Atwell
+      comment: Add columns to extract JSON fields from doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: orderdate
+                  type: TIMESTAMP
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: orderdate
+  - changeSet:
+      id: 20251110-add-columns-from-json-doc-8
+      author: Stephen Atwell
+      comment: Add columns to extract JSON fields from doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: orderstatus
+                  type: TEXT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: orderstatus
+  - changeSet:
+      id: 20251110-create-trigger-for-json-sync
+      author: Stephen Atwell
+      comment: Create trigger to keep JSON fields in sync with columns
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              -- Function to update columns from JSON
+              CREATE OR REPLACE FUNCTION update_order_columns_from_json()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.main = NEW.doc->>'Main';
+                NEW.drink = NEW.doc->>'Drink';
+                NEW.email = NEW.doc->>'Email';
+                NEW.side1 = NEW.doc->>'Side1';
+                NEW.side2 = NEW.doc->>'Side2';
+                NEW.orderid = (NEW.doc->>'OrderId')::INTEGER;
+                NEW.orderdate = (NEW.doc->>'OrderDate')::TIMESTAMP;
+                NEW.orderstatus = NEW.doc->>'OrderStatus';
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              -- Trigger to update columns when doc is updated
+              CREATE TRIGGER update_order_columns_trigger
+              BEFORE INSERT OR UPDATE ON orders
+              FOR EACH ROW
+              EXECUTE FUNCTION update_order_columns_from_json();
+
+              -- Function to update JSON from columns
+              CREATE OR REPLACE FUNCTION update_order_json_from_columns()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.doc = jsonb_build_object(
+                  'Main', NEW.main,
+                  'Drink', NEW.drink,
+                  'Email', NEW.email,
+                  'Side1', NEW.side1,
+                  'Side2', NEW.side2,
+                  'OrderId', NEW.orderid,
+                  'OrderDate', NEW.orderdate,
+                  'OrderStatus', NEW.orderstatus
+                );
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              -- Trigger to update JSON when columns are updated
+              CREATE TRIGGER update_order_json_trigger
+              BEFORE UPDATE OF main, drink, email, side1, side2, orderid, orderdate, orderstatus ON orders
+              FOR EACH ROW
+              WHEN (pg_trigger_depth() < 1)
+              EXECUTE FUNCTION update_order_json_from_columns();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS update_order_columns_trigger ON orders;
+              DROP FUNCTION IF EXISTS update_order_columns_from_json();
+              DROP TRIGGER IF EXISTS update_order_json_trigger ON orders;
+              DROP FUNCTION IF EXISTS update_order_json_from_columns();
+  - changeSet:
+      id: 20251110-populate-columns-from-json
+      author: Stephen Atwell
+      comment: Populate new columns with data from JSON doc column
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders SET
+                main = doc->>'Main',
+                drink = doc->>'Drink',
+                email = doc->>'Email',
+                side1 = doc->>'Side1',
+                side2 = doc->>'Side2',
+                orderid = (doc->>'OrderId')::INTEGER,
+                orderdate = (doc->>'OrderDate')::TIMESTAMP,
+                orderstatus = doc->>'OrderStatus';
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders SET
+                main = NULL,
+                drink = NULL,
+                email = NULL,
+                side1 = NULL,
+                side2 = NULL,
+                orderid = NULL,
+                orderdate = NULL,
+                orderstatus = NULL;
