@@ -160,3 +160,150 @@ databaseChangeLog:
       changes:
         - tagDatabase:
             tag: demo-reset
+  - changeSet:
+      id: extract-json-fields-from-doc-column-20251114-2357
+      author: Stephen Atwell
+      comment: Add separate columns for JSON fields from doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: main
+                  type: VARCHAR(255)
+              - column:
+                  name: drink
+                  type: VARCHAR(255)
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+              - column:
+                  name: side1
+                  type: VARCHAR(255)
+              - column:
+                  name: side2
+                  type: VARCHAR(255)
+              - column:
+                  name: orderid
+                  type: BIGINT
+              - column:
+                  name: orderdate
+                  type: TIMESTAMP
+              - column:
+                  name: orderstatus
+                  type: VARCHAR(50)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: main
+        - dropColumn:
+            tableName: orders
+            columnName: drink
+        - dropColumn:
+            tableName: orders
+            columnName: email
+        - dropColumn:
+            tableName: orders
+            columnName: side1
+        - dropColumn:
+            tableName: orders
+            columnName: side2
+        - dropColumn:
+            tableName: orders
+            columnName: orderid
+        - dropColumn:
+            tableName: orders
+            columnName: orderdate
+        - dropColumn:
+            tableName: orders
+            columnName: orderstatus
+  - changeSet:
+      id: populate-extracted-json-fields-20251114-2357
+      author: Stephen Atwell
+      comment: Populate new columns with data from doc JSON
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET main = (doc->>'Main'),
+                  drink = (doc->>'Drink'),
+                  email = (doc->>'Email'),
+                  side1 = (doc->>'Side1'),
+                  side2 = (doc->>'Side2'),
+                  orderid = (doc->>'OrderId')::BIGINT,
+                  orderdate = (doc->>'OrderDate')::TIMESTAMP,
+                  orderstatus = (doc->>'OrderStatus')
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET main = NULL,
+                  drink = NULL,
+                  email = NULL,
+                  side1 = NULL,
+                  side2 = NULL,
+                  orderid = NULL,
+                  orderdate = NULL,
+                  orderstatus = NULL
+  - changeSet:
+      id: create-trigger-for-doc-column-sync-20251114-2357
+      author: Stephen Atwell
+      comment: Create trigger to keep doc column and new columns in sync
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_orders_columns()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                IF TG_OP = 'UPDATE' THEN
+                  -- If doc column was updated, update the individual columns
+                  IF NEW.doc IS DISTINCT FROM OLD.doc THEN
+                    NEW.main := NEW.doc->>'Main';
+                    NEW.drink := NEW.doc->>'Drink';
+                    NEW.email := NEW.doc->>'Email';
+                    NEW.side1 := NEW.doc->>'Side1';
+                    NEW.side2 := NEW.doc->>'Side2';
+                    NEW.orderid := (NEW.doc->>'OrderId')::BIGINT;
+                    NEW.orderdate := (NEW.doc->>'OrderDate')::TIMESTAMP;
+                    NEW.orderstatus := NEW.doc->>'OrderStatus';
+                  -- If any individual column was updated, update the doc column
+                  ELSIF (NEW.main IS DISTINCT FROM OLD.main) OR
+                        (NEW.drink IS DISTINCT FROM OLD.drink) OR
+                        (NEW.email IS DISTINCT FROM OLD.email) OR
+                        (NEW.side1 IS DISTINCT FROM OLD.side1) OR
+                        (NEW.side2 IS DISTINCT FROM OLD.side2) OR
+                        (NEW.orderid IS DISTINCT FROM OLD.orderid) OR
+                        (NEW.orderdate IS DISTINCT FROM OLD.orderdate) OR
+                        (NEW.orderstatus IS DISTINCT FROM OLD.orderstatus) THEN
+                    NEW.doc := json_build_object(
+                      'Main', NEW.main,
+                      'Drink', NEW.drink,
+                      'Email', NEW.email,
+                      'Side1', NEW.side1,
+                      'Side2', NEW.side2,
+                      'OrderId', NEW.orderid,
+                      'OrderDate', NEW.orderdate,
+                      'OrderStatus', NEW.orderstatus
+                    );
+                  END IF;
+                END IF;
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              CREATE TRIGGER sync_orders_columns_trigger
+              BEFORE UPDATE ON orders
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_orders_columns();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS sync_orders_columns_trigger ON orders;
+              DROP FUNCTION IF EXISTS sync_orders_columns();
