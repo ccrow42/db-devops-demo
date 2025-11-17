@@ -93,7 +93,8 @@ EOF
 
 # Scale up the postgres deployment in the destination namespace
 kubectl -n ${NEW_NAMESPACE} scale deployment ${DEPLOYMENT_NAME} --replicas=1
-
+#waiting for pod to be created
+sleep 5
 # Set the pv back to delete
 kubectl patch pv ${PV_NAME} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete"}}'
 
