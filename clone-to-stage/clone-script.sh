@@ -100,7 +100,10 @@ kubectl patch pv ${PV_NAME} -p '{"spec":{"persistentVolumeReclaimPolicy":"Delete
 
 echo "Snapshot, clone, and new PVC created successfully!"
 
-kubectl wait --for=condition=ready pod -l app=postgres -n "$NEW_NAMESPACE" --timeout=180s
+kubectl wait --for=condition=ready pod -l app=postgres -n "$NEW_NAMESPACE" --timeout=240s
 
 #kubectl wait --for=condition=ready pod -l app=pxbbq-web -n "$NEW_NAMESPACE" --timeout=60s
 
+#restart both webapps so they get back into the running state....
+kubectl -n=pxbbq rollout restart deployment pxbbq-web-blue
+kubectl -n=pxbbq rollout restart deployment pxbbq-web-green
