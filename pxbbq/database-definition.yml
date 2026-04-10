@@ -73,7 +73,7 @@ databaseChangeLog:
                     primaryKey: true
                     primaryKeyName: registrations_pkey
                   name: id
-                  startWith: 12
+                  startWith: 13
                   type: INTEGER
               - column:
                   constraints:
