@@ -160,3 +160,244 @@ databaseChangeLog:
       changes:
         - tagDatabase:
             tag: demo-reset
+  - changeSet:
+      id: orders-add-main-column-202604101201
+      author: Stephen Atwell
+      comment: Add main column to orders table for JSON field extraction
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: main
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: main
+  - changeSet:
+      id: orders-add-drink-column-202604101201
+      author: Stephen Atwell
+      comment: Add drink column to orders table for JSON field extraction
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: drink
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: drink
+  - changeSet:
+      id: orders-add-email-column-202604101201
+      author: Stephen Atwell
+      comment: Add email column to orders table for JSON field extraction
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: email
+  - changeSet:
+      id: orders-add-side1-column-202604101201
+      author: Stephen Atwell
+      comment: Add side1 column to orders table for JSON field extraction
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: side1
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: side1
+  - changeSet:
+      id: orders-add-side2-column-202604101201
+      author: Stephen Atwell
+      comment: Add side2 column to orders table for JSON field extraction
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: side2
+                  type: VARCHAR(255)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: side2
+  - changeSet:
+      id: orders-add-orderid-column-202604101201
+      author: Stephen Atwell
+      comment: Add orderid column to orders table for JSON field extraction
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: orderid
+                  type: BIGINT
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: orderid
+  - changeSet:
+      id: orders-add-orderdate-column-202604101201
+      author: Stephen Atwell
+      comment: Add orderdate column to orders table for JSON field extraction
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: orderdate
+                  type: TIMESTAMP
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: orderdate
+  - changeSet:
+      id: orders-add-orderstatus-column-202604101201
+      author: Stephen Atwell
+      comment: Add orderstatus column to orders table for JSON field extraction
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: orderstatus
+                  type: VARCHAR(50)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: orderstatus
+  - changeSet:
+      id: orders-create-sync-trigger-doc-to-columns-202604101201
+      author: Stephen Atwell
+      comment: Create trigger to sync doc JSON column to individual columns on INSERT/UPDATE
+      labels: myticket-123
+      runOnChange: true
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_doc_to_columns()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                  IF NEW.doc IS NOT NULL THEN
+                      NEW.main := NEW.doc::json->>'Main';
+                      NEW.drink := NEW.doc::json->>'Drink';
+                      NEW.email := NEW.doc::json->>'Email';
+                      NEW.side1 := NEW.doc::json->>'Side1';
+                      NEW.side2 := NEW.doc::json->>'Side2';
+                      NEW.orderid := (NEW.doc::json->>'OrderId')::BIGINT;
+                      NEW.orderdate := (NEW.doc::json->>'OrderDate')::TIMESTAMP;
+                      NEW.orderstatus := NEW.doc::json->>'OrderStatus';
+                  END IF;
+                  RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              DROP TRIGGER IF EXISTS trg_sync_doc_to_columns ON orders;
+
+              CREATE TRIGGER trg_sync_doc_to_columns
+              BEFORE INSERT OR UPDATE OF doc ON orders
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_doc_to_columns();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS trg_sync_doc_to_columns ON orders;
+              DROP FUNCTION IF EXISTS sync_doc_to_columns();
+  - changeSet:
+      id: orders-create-sync-trigger-columns-to-doc-202604101201
+      author: Stephen Atwell
+      comment: Create trigger to sync individual columns back to doc JSON column on INSERT/UPDATE
+      labels: myticket-123
+      runOnChange: true
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_columns_to_doc()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                  NEW.doc := json_build_object(
+                      'Main', NEW.main,
+                      'Drink', NEW.drink,
+                      'Email', NEW.email,
+                      'Side1', NEW.side1,
+                      'Side2', NEW.side2,
+                      'OrderId', NEW.orderid,
+                      'OrderDate', NEW.orderdate,
+                      'OrderStatus', NEW.orderstatus
+                  )::text;
+                  RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              DROP TRIGGER IF EXISTS trg_sync_columns_to_doc ON orders;
+
+              CREATE TRIGGER trg_sync_columns_to_doc
+              BEFORE INSERT OR UPDATE OF main, drink, email, side1, side2, orderid, orderdate, orderstatus ON orders
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_columns_to_doc();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS trg_sync_columns_to_doc ON orders;
+              DROP FUNCTION IF EXISTS sync_columns_to_doc();
+  - changeSet:
+      id: orders-populate-columns-from-doc-202604101201
+      author: Stephen Atwell
+      comment: Populate new columns with data from existing doc JSON column
+      labels: myticket-123
+      runInTransaction: false
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET
+                  main = doc::json->>'Main',
+                  drink = doc::json->>'Drink',
+                  email = doc::json->>'Email',
+                  side1 = doc::json->>'Side1',
+                  side2 = doc::json->>'Side2',
+                  orderid = (doc::json->>'OrderId')::BIGINT,
+                  orderdate = (doc::json->>'OrderDate')::TIMESTAMP,
+                  orderstatus = doc::json->>'OrderStatus'
+              WHERE doc IS NOT NULL;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET
+                  main = NULL,
+                  drink = NULL,
+                  email = NULL,
+                  side1 = NULL,
+                  side2 = NULL,
+                  orderid = NULL,
+                  orderdate = NULL,
+                  orderstatus = NULL;
