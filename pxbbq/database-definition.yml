@@ -160,3 +160,170 @@ databaseChangeLog:
       changes:
         - tagDatabase:
             tag: demo-reset
+  - changeSet:
+      id: orders-add-json-columns-20260416-2147
+      author: Stephen Atwell
+      comment: Add separate columns for each JSON field in the doc column
+      labels: Harness29
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: main
+                  type: VARCHAR(255)
+              - column:
+                  name: drink
+                  type: VARCHAR(255)
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+              - column:
+                  name: side1
+                  type: VARCHAR(255)
+              - column:
+                  name: side2
+                  type: VARCHAR(255)
+              - column:
+                  name: orderid
+                  type: BIGINT
+              - column:
+                  name: orderdate
+                  type: TIMESTAMP
+              - column:
+                  name: orderstatus
+                  type: VARCHAR(50)
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: main
+        - dropColumn:
+            tableName: orders
+            columnName: drink
+        - dropColumn:
+            tableName: orders
+            columnName: email
+        - dropColumn:
+            tableName: orders
+            columnName: side1
+        - dropColumn:
+            tableName: orders
+            columnName: side2
+        - dropColumn:
+            tableName: orders
+            columnName: orderid
+        - dropColumn:
+            tableName: orders
+            columnName: orderdate
+        - dropColumn:
+            tableName: orders
+            columnName: orderstatus
+  - changeSet:
+      id: orders-migrate-json-to-columns-20260416-2147
+      author: Stephen Atwell
+      comment: Migrate existing JSON data from doc column to new columns
+      labels: Harness29
+      runInTransaction: false
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET
+                  main = doc::json->>'Main',
+                  drink = doc::json->>'Drink',
+                  email = doc::json->>'Email',
+                  side1 = doc::json->>'Side1',
+                  side2 = doc::json->>'Side2',
+                  orderid = (doc::json->>'OrderId')::BIGINT,
+                  orderdate = (doc::json->>'OrderDate')::TIMESTAMP,
+                  orderstatus = doc::json->>'OrderStatus'
+              WHERE doc IS NOT NULL;
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET
+                  main = NULL,
+                  drink = NULL,
+                  email = NULL,
+                  side1 = NULL,
+                  side2 = NULL,
+                  orderid = NULL,
+                  orderdate = NULL,
+                  orderstatus = NULL;
+  - changeSet:
+      id: orders-trigger-columns-to-doc-20260416-2147
+      author: Stephen Atwell
+      comment: Create trigger to sync new columns to doc JSON column
+      labels: Harness29
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION orders_columns_to_doc()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                  NEW.doc := json_build_object(
+                      'Main', NEW.main,
+                      'Drink', NEW.drink,
+                      'Email', NEW.email,
+                      'Side1', NEW.side1,
+                      'Side2', NEW.side2,
+                      'OrderId', NEW.orderid,
+                      'OrderDate', NEW.orderdate,
+                      'OrderStatus', NEW.orderstatus
+                  )::text;
+                  RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              CREATE TRIGGER trg_orders_columns_to_doc
+              BEFORE INSERT OR UPDATE OF main, drink, email, side1, side2, orderid, orderdate, orderstatus
+              ON orders
+              FOR EACH ROW
+              WHEN (pg_trigger_depth() = 0)
+              EXECUTE FUNCTION orders_columns_to_doc();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS trg_orders_columns_to_doc ON orders;
+              DROP FUNCTION IF EXISTS orders_columns_to_doc();
+  - changeSet:
+      id: orders-trigger-doc-to-columns-20260416-2147
+      author: Stephen Atwell
+      comment: Create trigger to sync doc JSON column to new columns
+      labels: Harness29
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION orders_doc_to_columns()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                  NEW.main := NEW.doc::json->>'Main';
+                  NEW.drink := NEW.doc::json->>'Drink';
+                  NEW.email := NEW.doc::json->>'Email';
+                  NEW.side1 := NEW.doc::json->>'Side1';
+                  NEW.side2 := NEW.doc::json->>'Side2';
+                  NEW.orderid := (NEW.doc::json->>'OrderId')::BIGINT;
+                  NEW.orderdate := (NEW.doc::json->>'OrderDate')::TIMESTAMP;
+                  NEW.orderstatus := NEW.doc::json->>'OrderStatus';
+                  RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              CREATE TRIGGER trg_orders_doc_to_columns
+              BEFORE INSERT OR UPDATE OF doc
+              ON orders
+              FOR EACH ROW
+              WHEN (pg_trigger_depth() = 0)
+              EXECUTE FUNCTION orders_doc_to_columns();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS trg_orders_doc_to_columns ON orders;
+              DROP FUNCTION IF EXISTS orders_doc_to_columns();
