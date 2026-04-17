@@ -160,9 +160,7 @@ databaseChangeLog:
       changes:
         - tagDatabase:
             tag: demo-reset
-
-              databaseChangeLog:
- - changeSet:
+  - changeSet:
      id: 20251117-add-json-extract-columns-to-orders-table
      author: Stephen Atwell
      comment: Add columns to extract JSON fields from doc column
@@ -220,9 +218,7 @@ databaseChangeLog:
        - dropColumn:
            tableName: orders
            columnName: orderstatus
-
-
- - changeSet:
+  - changeSet:
      id: 20251117-populate-extracted-columns-from-json
      author: Stephen Atwell
      comment: Populate the new columns with data from the doc JSON column
@@ -253,7 +249,7 @@ databaseChangeLog:
                  orderid = NULL,
                  orderdate = NULL,
                  orderstatus = NULL;
- - changeSet:
+  - changeSet:
      id: 20251117-create-trigger-for-json-sync
      author: Stephen Atwell
      comment: Create trigger to keep JSON and individual columns in sync
