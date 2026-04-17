@@ -161,7 +161,7 @@ databaseChangeLog:
         - tagDatabase:
             tag: demo-reset
   - changeSet:
-     id: 20251117-add-json-extract-columns-to-orders-table
+     id: 20260417-add-json-extract-columns-to-orders-table
      author: Stephen Atwell
      comment: Add columns to extract JSON fields from doc column
      labels: myticket-123
@@ -219,7 +219,7 @@ databaseChangeLog:
            tableName: orders
            columnName: orderstatus
   - changeSet:
-     id: 20251117-populate-extracted-columns-from-json
+     id: 20260417-populate-extracted-columns-from-json
      author: Stephen Atwell
      comment: Populate the new columns with data from the doc JSON column
      labels: myticket-123
@@ -250,7 +250,7 @@ databaseChangeLog:
                  orderdate = NULL,
                  orderstatus = NULL;
   - changeSet:
-     id: 20251117-create-trigger-for-json-sync
+     id: 20260417-create-trigger-for-json-sync
      author: Stephen Atwell
      comment: Create trigger to keep JSON and individual columns in sync
      labels: myticket-123
