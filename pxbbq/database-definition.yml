@@ -160,3 +160,154 @@ databaseChangeLog:
       changes:
         - tagDatabase:
             tag: demo-reset
+  - changeSet:
+      id: 20251111_221904_add_columns_to_orders_table
+      author: Stephen Atwell
+      comment: Add separate columns for each JSON field from doc column
+      labels: myticket-123
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: main
+                  type: text
+              - column:
+                  name: drink
+                  type: text
+              - column:
+                  name: email
+                  type: text
+              - column:
+                  name: side1
+                  type: text
+              - column:
+                  name: side2
+                  type: text
+              - column:
+                  name: orderid
+                  type: integer
+              - column:
+                  name: orderdate
+                  type: timestamp
+              - column:
+                  name: orderstatus
+                  type: text
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: main
+        - dropColumn:
+            tableName: orders
+            columnName: drink
+        - dropColumn:
+            tableName: orders
+            columnName: email
+        - dropColumn:
+            tableName: orders
+            columnName: side1
+        - dropColumn:
+            tableName: orders
+            columnName: side2
+        - dropColumn:
+            tableName: orders
+            columnName: orderid
+        - dropColumn:
+            tableName: orders
+            columnName: orderdate
+        - dropColumn:
+            tableName: orders
+            columnName: orderstatus
+  - changeSet:
+      id: 20251111_221905_populate_new_columns_from_doc
+      author: Stephen Atwell
+      comment: Populate new columns with data from doc JSON column
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              UPDATE orders
+              SET main = doc->>'Main',
+                  drink = doc->>'Drink',
+                  email = doc->>'Email',
+                  side1 = doc->>'Side1',
+                  side2 = doc->>'Side2',
+                  orderid = (doc->>'OrderId')::integer,
+                  orderdate = (doc->>'OrderDate')::timestamp,
+                  orderstatus = doc->>'OrderStatus';
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              -- No rollback needed as original doc column is preserved
+  - changeSet:
+      id: 20251111_221906_create_trigger_for_doc_to_columns
+      author: Stephen Atwell
+      comment: Create trigger to sync from doc column to individual columns
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_doc_to_columns()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.main = NEW.doc->>'Main';
+                NEW.drink = NEW.doc->>'Drink';
+                NEW.email = NEW.doc->>'Email';
+                NEW.side1 = NEW.doc->>'Side1';
+                NEW.side2 = NEW.doc->>'Side2';
+                NEW.orderid = (NEW.doc->>'OrderId')::integer;
+                NEW.orderdate = (NEW.doc->>'OrderDate')::timestamp;
+                NEW.orderstatus = NEW.doc->>'OrderStatus';
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              CREATE TRIGGER trigger_sync_doc_to_columns
+              BEFORE INSERT OR UPDATE OF doc ON orders
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_doc_to_columns();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS trigger_sync_doc_to_columns ON orders;
+              DROP FUNCTION IF EXISTS sync_doc_to_columns();
+  - changeSet:
+      id: 20251111_221907_create_trigger_for_columns_to_doc
+      author: Stephen Atwell
+      comment: Create trigger to sync from individual columns to doc column
+      labels: myticket-123
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE OR REPLACE FUNCTION sync_columns_to_doc()
+              RETURNS TRIGGER AS $$
+              BEGIN
+                NEW.doc = jsonb_build_object(
+                  'Main', NEW.main,
+                  'Drink', NEW.drink,
+                  'Email', NEW.email,
+                  'Side1', NEW.side1,
+                  'Side2', NEW.side2,
+                  'OrderId', NEW.orderid,
+                  'OrderDate', NEW.orderdate,
+                  'OrderStatus', NEW.orderstatus
+                );
+                RETURN NEW;
+              END;
+              $$ LANGUAGE plpgsql;
+
+              CREATE TRIGGER trigger_sync_columns_to_doc
+              BEFORE UPDATE OF main, drink, email, side1, side2, orderid, orderdate, orderstatus ON orders
+              FOR EACH ROW
+              EXECUTE FUNCTION sync_columns_to_doc();
+      rollback:
+        - sql:
+            splitStatements: false
+            sql: |
+              DROP TRIGGER IF EXISTS trigger_sync_columns_to_doc ON orders;
+              DROP FUNCTION IF EXISTS sync_columns_to_doc();
